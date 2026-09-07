@@ -1,8 +1,34 @@
-export type HiringStatus = 'draft' | 'calling' | 'paused' | 'completed';
-export type CandidateStatus = 'added' | 'contacted' | 'connected' | 'interested' | 'shortlisted' | 'not_interested' | 'no_answer';
-export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship';
-export type ActivityType = 'call_completed' | 'call_failed' | 'call_no_answer' | 'candidate_shortlisted' | 'hiring_created' | 'hiring_launched' | 'candidate_interested';
+// ============================================================
+// SoloBuildAI — Core Domain Types
+// These types map cleanly to future FastAPI/Pydantic models.
+// ============================================================
 
+export type HiringStatus = 'draft' | 'ready' | 'calling' | 'paused' | 'completed';
+export type CandidateStatus =
+  | 'added'
+  | 'calling'
+  | 'contacted'
+  | 'connected'
+  | 'interested'
+  | 'shortlisted'
+  | 'not_interested'
+  | 'no_answer'
+  | 'busy'
+  | 'call_failed';
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship';
+export type ActivityType =
+  | 'call_completed'
+  | 'call_failed'
+  | 'call_no_answer'
+  | 'candidate_shortlisted'
+  | 'hiring_created'
+  | 'hiring_launched'
+  | 'hiring_paused'
+  | 'hiring_resumed'
+  | 'hiring_completed'
+  | 'candidate_interested';
+
+// ——— Hiring ———
 export interface Hiring {
   id: string;
   title: string;
@@ -10,16 +36,19 @@ export interface Hiring {
   employmentType: EmploymentType;
   description?: string;
   status: HiringStatus;
-  candidateCount: number;
-  contacted: number;
+  aiRecruiterId?: string;
+  interviewInstructions?: string;
+  candidateCount: number;  // derived: candidateIds.length
+  contacted: number;       // derived from candidates
   connected: number;
   interested: number;
   shortlisted: number;
-  aiRecruiterId?: string;
+  candidateIds: string[];
   createdAt: string;
   updatedAt: string;
 }
 
+// ——— Candidate ———
 export interface Candidate {
   id: string;
   name: string;
@@ -32,12 +61,14 @@ export interface Candidate {
   hiringTitle?: string;
   status: CandidateStatus;
   lastActivity?: string;
+  lastActivityAt?: string; // ISO
   callDuration?: string;
   callOutcome?: string;
   aiSummary?: string;
   notes?: string;
 }
 
+// ——— AI Recruiter ———
 export interface AIRecruiter {
   id: string;
   name: string;
@@ -50,19 +81,57 @@ export interface AIRecruiter {
   avatarColor: string;
 }
 
+// ——— Call ———
+export interface Call {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  hiringId: string;
+  hiringTitle: string;
+  status: 'completed' | 'no_answer' | 'busy' | 'failed';
+  duration?: string; // "4m 22s"
+  outcome?: CandidateStatus;
+  aiSummary?: string;
+  startedAt: string;  // ISO
+  completedAt?: string; // ISO
+  timeAgo: string;
+}
+
+// ——— Activity ———
 export interface ActivityItem {
   id: string;
   type: ActivityType;
   candidateName?: string;
   hiringTitle?: string;
   description: string;
-  timestamp: string;
+  timestamp: string; // ISO
   timeAgo: string;
 }
 
+// ——— Import ———
+export interface ParsedCandidate {
+  name: string;
+  phone: string;
+  email?: string;
+  position?: string;
+  location?: string;
+  experience?: string;
+  _valid: boolean;
+  _errors: string[];
+}
+
+// ——— Forms ———
 export interface CreateHiringForm {
   title: string;
   location: string;
   employmentType: EmploymentType;
   description: string;
+}
+
+export interface CreateRecruiterForm {
+  name: string;
+  conversationStyle: string;
+  languages: string;
+  voice: string;
+  interviewInstructions: string;
 }

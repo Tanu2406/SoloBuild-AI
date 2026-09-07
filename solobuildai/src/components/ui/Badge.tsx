@@ -21,25 +21,29 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, dot
 export const HiringStatusBadge: React.FC<{ status: HiringStatus }> = ({ status }) => {
   const map: Record<HiringStatus, { variant: BadgeVariant; label: string; dot: boolean }> = {
     calling: { variant: 'success', label: 'Calling', dot: true },
+    ready: { variant: 'info', label: 'Ready', dot: false },
     paused: { variant: 'warning', label: 'Paused', dot: false },
     completed: { variant: 'neutral', label: 'Completed', dot: false },
-    draft: { variant: 'info', label: 'Draft', dot: false },
+    draft: { variant: 'neutral', label: 'Draft', dot: false },
   };
-  const config = map[status];
+  const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status, dot: false };
   return <Badge variant={config.variant} dot={config.dot}>{config.label}</Badge>;
 };
 
 export const CandidateStatusBadge: React.FC<{ status: CandidateStatus }> = ({ status }) => {
   const map: Record<CandidateStatus, { variant: BadgeVariant; label: string }> = {
     added: { variant: 'neutral', label: 'Added' },
+    calling: { variant: 'info', label: 'Calling…' },
     contacted: { variant: 'info', label: 'Contacted' },
     connected: { variant: 'primary', label: 'Connected' },
     interested: { variant: 'success', label: 'Interested' },
     shortlisted: { variant: 'success', label: 'Shortlisted' },
     not_interested: { variant: 'neutral', label: 'Not Interested' },
     no_answer: { variant: 'warning', label: 'No Answer' },
+    busy: { variant: 'warning', label: 'Busy' },
+    call_failed: { variant: 'error', label: 'Call Failed' },
   };
-  const config = map[status];
+  const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status };
   return <Badge variant={config.variant}>{config.label}</Badge>;
 };
 

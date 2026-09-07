@@ -7,7 +7,7 @@ import { Tabs } from '../components/ui/Tabs';
 import { CandidateStatusBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
-import { mockCandidates } from '../mock/data';
+import { useCandidates } from '../store/appStore';
 import type { CandidateStatus } from '../types';
 
 type FilterTab = 'all' | CandidateStatus;
@@ -22,10 +22,11 @@ const filterTabs = [
 
 const Candidates: React.FC = () => {
   const navigate = useNavigate();
+  const candidates = useCandidates();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
-  const filtered = mockCandidates.filter(c => {
+  const filtered = candidates.filter(c => {
     const matchFilter = activeFilter === 'all' || c.status === activeFilter;
     const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,16 +38,13 @@ const Candidates: React.FC = () => {
   const tabsWithCount = filterTabs.map(t => ({
     ...t,
     count: t.id === 'all'
-      ? mockCandidates.length
-      : mockCandidates.filter(c => c.status === t.id).length,
+      ? candidates.length
+      : candidates.filter(c => c.status === t.id).length,
   }));
 
   return (
     <div className="page-content animate-fade-in">
-      <PageHeader
-        title="Candidates"
-        subtitle="All candidates across your hirings."
-      />
+      <PageHeader title="Candidates" subtitle="All candidates across your hirings." />
 
       <div className="candidates-toolbar">
         <div className="candidates-toolbar__search">
@@ -60,18 +58,18 @@ const Candidates: React.FC = () => {
       </div>
 
       <div className="candidates-filter-row">
-        <Tabs
-          tabs={tabsWithCount}
-          activeTab={activeFilter}
-          onChange={id => setActiveFilter(id as FilterTab)}
-        />
+        <Tabs tabs={tabsWithCount} activeTab={activeFilter} onChange={id => setActiveFilter(id as FilterTab)} />
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Users size={24} />}
-          title="No candidates found"
-          description="Try adjusting your search or filters."
+          title={candidates.length === 0 ? 'No candidates yet' : 'No candidates found'}
+          description={
+            candidates.length === 0
+              ? 'Candidates will appear here once you create a hiring and import your list.'
+              : 'Try adjusting your search or filters.'
+          }
         />
       ) : (
         <div className="candidates-table-wrap">
@@ -104,14 +102,12 @@ const Candidates: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    {candidate.hiringTitle ? (
-                      <span className="candidate-hiring">{candidate.hiringTitle}</span>
-                    ) : '—'}
+                    {candidate.hiringTitle
+                      ? <span className="candidate-hiring">{candidate.hiringTitle}</span>
+                      : '—'}
                   </td>
                   <td className="candidate-phone">{candidate.phone}</td>
-                  <td>
-                    <CandidateStatusBadge status={candidate.status} />
-                  </td>
+                  <td><CandidateStatusBadge status={candidate.status} /></td>
                   <td className="candidate-activity">{candidate.lastActivity || '—'}</td>
                 </tr>
               ))}
@@ -127,97 +123,23 @@ export default Candidates;
 
 const style = document.createElement('style');
 style.textContent = `
-.candidates-toolbar {
-  margin-bottom: 0;
-}
-
-.candidates-toolbar__search {
-  max-width: 380px;
-  margin-bottom: 16px;
-}
-
-.candidates-filter-row {
-  margin-bottom: 20px;
-}
-
-.candidates-table-wrap {
-  background: var(--bg-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  overflow-x: auto;
-}
-
-.candidates-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-}
-
-.candidates-table th {
-  padding: 11px 16px;
-  text-align: left;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-default);
-  white-space: nowrap;
-}
-
-.candidates-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-default);
-  vertical-align: middle;
-}
-
+.candidates-toolbar { margin-bottom: 0; }
+.candidates-toolbar__search { max-width: 380px; margin-bottom: 16px; }
+.candidates-filter-row { margin-bottom: 20px; }
+.candidates-table-wrap { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; overflow-x: auto; }
+.candidates-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+.candidates-table th { padding: 11px 16px; text-align: left; font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-subtle); border-bottom: 1px solid var(--border-default); white-space: nowrap; }
+.candidates-table td { padding: 14px 16px; border-bottom: 1px solid var(--border-default); vertical-align: middle; }
 .candidates-table tr:last-child td { border-bottom: none; }
-
-.candidates-table__row {
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
+.candidates-table__row { cursor: pointer; transition: background var(--transition-fast); }
 .candidates-table__row:hover td { background: var(--bg-hover); }
-
-.candidate-name-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.candidate-name-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.candidate-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: var(--font-size-base);
-}
-
-.candidate-location {
-  font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
-}
-
-.candidate-hiring {
-  color: var(--brand-primary);
-  font-weight: 500;
-  font-size: var(--font-size-sm);
-}
-
-.candidate-phone {
-  color: var(--text-secondary);
-}
-
-.candidate-activity {
-  color: var(--text-tertiary);
-  font-size: var(--font-size-xs);
-}
+.candidate-name-cell { display: flex; align-items: center; gap: 10px; }
+.candidate-name-info { display: flex; flex-direction: column; gap: 1px; }
+.candidate-name { font-weight: 500; color: var(--text-primary); font-size: var(--font-size-base); }
+.candidate-location { font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.candidate-hiring { color: var(--brand-primary); font-weight: 500; font-size: var(--font-size-sm); }
+.candidate-phone { color: var(--text-secondary); }
+.candidate-activity { color: var(--text-tertiary); font-size: var(--font-size-xs); }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('candidates-page-styles')) {
   style.id = 'candidates-page-styles';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, PhoneOff, PhoneMissed, Star, Briefcase, Play } from 'lucide-react';
+import { Phone, PhoneOff, PhoneMissed, Star, Briefcase, Play, Pause } from 'lucide-react';
 import type { ActivityItem as ActivityItemType, ActivityType } from '../../types';
 
 interface ActivityItemProps {
@@ -41,6 +41,21 @@ const iconMap: Record<ActivityType, { icon: React.ReactNode; color: string; bg: 
     icon: <Play size={14} />,
     color: 'var(--brand-primary)',
     bg: 'var(--brand-primary-light)',
+  },
+  hiring_paused: {
+    icon: <Pause size={14} />,
+    color: 'var(--status-warning-text)',
+    bg: 'var(--status-warning-bg)',
+  },
+  hiring_resumed: {
+    icon: <Play size={14} />,
+    color: 'var(--brand-primary)',
+    bg: 'var(--brand-primary-light)',
+  },
+  hiring_completed: {
+    icon: <Briefcase size={14} />,
+    color: 'var(--status-success-text)',
+    bg: 'var(--status-success-bg)',
   },
 };
 

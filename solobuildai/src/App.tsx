@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/ui/Layout';
 import { ToastProvider } from './components/ui/Toast';
+import { AppProvider } from './store/appStore';
 
 // Pages
 import Home from './pages/Home';
@@ -20,31 +21,33 @@ import './styles/global.css';
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <Routes>
-          {/* Create Hiring has its own full-screen layout (no sidebar) */}
-          <Route path="/hiring/create" element={<CreateHiring />} />
+      <AppProvider>
+        <ToastProvider>
+          <Routes>
+            {/* Create Hiring: full-screen flow, no sidebar */}
+            <Route path="/hiring/create" element={<CreateHiring />} />
 
-          {/* Main app shell */}
-          <Route
-            path="/*"
-            element={
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/hiring" element={<Hiring />} />
-                  <Route path="/hiring/:id" element={<HiringWorkspace />} />
-                  <Route path="/candidates" element={<Candidates />} />
-                  <Route path="/candidates/:id" element={<CandidateDetail />} />
-                  <Route path="/recruiters" element={<AIRecruiters />} />
-                  <Route path="/activity" element={<Activity />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Routes>
-              </Layout>
-            }
-          />
-        </Routes>
-      </ToastProvider>
+            {/* Main app shell with sidebar */}
+            <Route
+              path="/*"
+              element={
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/hiring" element={<Hiring />} />
+                    <Route path="/hiring/:id" element={<HiringWorkspace />} />
+                    <Route path="/candidates" element={<Candidates />} />
+                    <Route path="/candidates/:id" element={<CandidateDetail />} />
+                    <Route path="/recruiters" element={<AIRecruiters />} />
+                    <Route path="/activity" element={<Activity />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Routes>
+                </Layout>
+              }
+            />
+          </Routes>
+        </ToastProvider>
+      </AppProvider>
     </BrowserRouter>
   );
 };
