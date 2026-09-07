@@ -1,0 +1,95 @@
+/* ============================================================
+   SoloBuildAI Design Tokens
+   All brand colors derive from --brand-primary.
+   To retheme: update --brand-primary only.
+   ============================================================ */
+
+:root {
+  /* Brand */
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-primary-light: #eff6ff;
+  --brand-primary-text: #1e40af;
+
+  /* Backgrounds */
+  --bg-app: #f8fafc;
+  --bg-white: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --bg-hover: #f8fafc;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-default: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-focus: var(--brand-primary);
+
+  /* Status */
+  --status-success-bg: #f0fdf4;
+  --status-success-text: #15803d;
+  --status-success-border: #bbf7d0;
+
+  --status-warning-bg: #fffbeb;
+  --status-warning-text: #b45309;
+  --status-warning-border: #fde68a;
+
+  --status-error-bg: #fef2f2;
+  --status-error-text: #b91c1c;
+  --status-error-border: #fecaca;
+
+  --status-info-bg: var(--brand-primary-light);
+  --status-info-text: var(--brand-primary-text);
+  --status-info-border: #bfdbfe;
+
+  --status-neutral-bg: #f9fafb;
+  --status-neutral-text: #374151;
+  --status-neutral-border: var(--border-default);
+
+  /* Sidebar */
+  --sidebar-width: 232px;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: var(--border-default);
+  --sidebar-item-active-bg: var(--brand-primary-light);
+  --sidebar-item-active-text: var(--brand-primary);
+  --sidebar-item-hover-bg: #f9fafb;
+  --sidebar-item-text: #374151;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --content-padding: 40px;
+  --content-padding-sm: 24px;
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 30px;
+  --font-size-5xl: 36px;
+}
