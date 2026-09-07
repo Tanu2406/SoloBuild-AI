@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { Hiring, Candidate, AIRecruiter, Call, ActivityItem } from '../types';
+import type { Hiring, Candidate, AIRecruiter, Call, ActivityItem, DirectCall } from '../types';
 import { seedData } from './seedData';
 
 // ——— State shape ———
@@ -15,6 +15,7 @@ export interface AppState {
   candidates: Candidate[];
   recruiters: AIRecruiter[];
   calls: Call[];
+  directCalls: DirectCall[];
   activity: ActivityItem[];
   initialized: boolean;
 }
@@ -31,6 +32,8 @@ type Action =
   | { type: 'UPDATE_RECRUITER'; payload: { id: string; updates: Partial<AIRecruiter> } }
   | { type: 'DELETE_RECRUITER'; payload: string }
   | { type: 'ADD_CALL'; payload: Call }
+  | { type: 'ADD_DIRECT_CALL'; payload: DirectCall }
+  | { type: 'UPDATE_DIRECT_CALL'; payload: { id: string; updates: Partial<DirectCall> } }
   | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
   | { type: 'RESET_TO_SEED' };
 
@@ -136,6 +139,17 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ADD_CALL':
       return { ...state, calls: [action.payload, ...state.calls] };
 
+    case 'ADD_DIRECT_CALL':
+      return { ...state, directCalls: [action.payload, ...state.directCalls] };
+
+    case 'UPDATE_DIRECT_CALL':
+      return {
+        ...state,
+        directCalls: state.directCalls.map(c =>
+          c.id === action.payload.id ? { ...c, ...action.payload.updates } : c
+        ),
+      };
+
     case 'ADD_ACTIVITY':
       return { ...state, activity: [action.payload, ...state.activity] };
 
@@ -169,6 +183,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed: AppState = JSON.parse(raw);
         // Validate basic shape before trusting it
         if (parsed.hirings && parsed.candidates && parsed.recruiters) {
+          // Backfill directCalls if missing (added in later version)
+          if (!parsed.directCalls) parsed.directCalls = [];
           dispatch({ type: 'HYDRATE', payload: { ...parsed, initialized: true } });
           return;
         }
@@ -209,3 +225,5 @@ export const useCandidate = (id: string) =>
 
 export const useHiringCandidates = (hiringId: string) =>
   useAppStore().state.candidates.filter(c => c.hiringId === hiringId);
+
+export const useDirectCalls = () => useAppStore().state.directCalls;

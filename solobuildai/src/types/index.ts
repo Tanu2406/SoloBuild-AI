@@ -26,7 +26,10 @@ export type ActivityType =
   | 'hiring_paused'
   | 'hiring_resumed'
   | 'hiring_completed'
-  | 'candidate_interested';
+  | 'candidate_interested'
+  | 'direct_call_completed'
+  | 'direct_call_failed'
+  | 'direct_call_no_answer';
 
 // ——— Hiring ———
 export interface Hiring {
@@ -120,7 +123,33 @@ export interface ParsedCandidate {
   _errors: string[];
 }
 
-// ——— Forms ———
+// ——— Direct Call (Dial a Number) ———
+// Maps to future FastAPI: POST /calls
+export type DirectCallStatus =
+  | 'preparing'   // system setting up
+  | 'ringing'     // phone is ringing
+  | 'connected'   // candidate picked up
+  | 'in_progress' // conversation ongoing
+  | 'completed'   // call ended normally
+  | 'no_answer'   // rang out
+  | 'busy'        // line busy
+  | 'failed';     // technical failure
+
+export type CallPurpose = 'initial_screening' | 'follow_up' | 'offer_discussion' | 'general';
+
+export interface DirectCall {
+  id: string;
+  candidateName?: string;
+  phoneNumber: string;
+  aiRecruiterId: string;
+  purpose: CallPurpose;
+  status: DirectCallStatus;
+  duration?: string;
+  aiSummary?: string;
+  startedAt: string;
+  endedAt?: string;
+  timeAgo: string;
+}
 export interface CreateHiringForm {
   title: string;
   location: string;

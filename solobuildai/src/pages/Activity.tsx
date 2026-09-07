@@ -7,37 +7,55 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useActivity } from '../store/appStore';
 import type { ActivityType } from '../types';
 
-type ActivityFilter = 'all' | 'calls' | 'hiring';
+type ActivityFilter = 'all' | 'calls' | 'direct' | 'hiring';
 
 const activityTabs = [
   { id: 'all', label: 'All activity' },
-  { id: 'calls', label: 'Calls' },
-  { id: 'hiring', label: 'Hiring' },
+  { id: 'calls', label: 'Hiring Calls' },
+  { id: 'direct', label: 'Direct Calls' },
+  { id: 'hiring', label: 'Hiring Events' },
 ];
 
-const callTypes: ActivityType[] = ['call_completed', 'call_failed', 'call_no_answer', 'candidate_interested', 'candidate_shortlisted'];
-const hiringTypes: ActivityType[] = ['hiring_created', 'hiring_launched', 'hiring_paused', 'hiring_resumed', 'hiring_completed'];
+const hiringCallTypes: ActivityType[] = [
+  'call_completed', 'call_failed', 'call_no_answer',
+  'candidate_interested', 'candidate_shortlisted',
+];
+
+const directCallTypes: ActivityType[] = [
+  'direct_call_completed', 'direct_call_failed', 'direct_call_no_answer',
+];
+
+const hiringEventTypes: ActivityType[] = [
+  'hiring_created', 'hiring_launched', 'hiring_paused',
+  'hiring_resumed', 'hiring_completed',
+];
 
 const Activity: React.FC = () => {
   const activity = useActivity();
   const [filter, setFilter] = useState<ActivityFilter>('all');
 
   const filtered = activity.filter(item => {
-    if (filter === 'calls') return callTypes.includes(item.type);
-    if (filter === 'hiring') return hiringTypes.includes(item.type);
+    if (filter === 'calls') return hiringCallTypes.includes(item.type);
+    if (filter === 'direct') return directCallTypes.includes(item.type);
+    if (filter === 'hiring') return hiringEventTypes.includes(item.type);
     return true;
   });
 
   const tabsWithCount = activityTabs.map(t => ({
     ...t,
-    count: t.id === 'all' ? activity.length
-      : t.id === 'calls' ? activity.filter(a => callTypes.includes(a.type)).length
-      : activity.filter(a => hiringTypes.includes(a.type)).length,
+    count:
+      t.id === 'all' ? activity.length
+      : t.id === 'calls' ? activity.filter(a => hiringCallTypes.includes(a.type)).length
+      : t.id === 'direct' ? activity.filter(a => directCallTypes.includes(a.type)).length
+      : activity.filter(a => hiringEventTypes.includes(a.type)).length,
   }));
 
   return (
     <div className="page-content animate-fade-in">
-      <PageHeader title="Activity" subtitle="Everything happening across your hirings." />
+      <PageHeader
+        title="Activity"
+        subtitle="Everything happening across your hirings and calls."
+      />
 
       <div className="activity-filter">
         <Tabs tabs={tabsWithCount} activeTab={filter} onChange={id => setFilter(id as ActivityFilter)} />
@@ -46,8 +64,12 @@ const Activity: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<ActivityIcon size={24} />}
-          title="No activity yet"
-          description="Activity will appear here once you start a hiring and calls begin."
+          title={filter === 'direct' ? 'No direct calls yet' : 'No activity yet'}
+          description={
+            filter === 'direct'
+              ? 'Use "Dial a Number" from the home screen to make a direct call.'
+              : 'Activity will appear here once you start a hiring and calls begin.'
+          }
         />
       ) : (
         <div className="activity-feed">
@@ -65,7 +87,13 @@ export default Activity;
 const style = document.createElement('style');
 style.textContent = `
 .activity-filter { margin-bottom: 20px; }
-.activity-feed { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 4px 24px 12px; max-width: 720px; }
+.activity-feed {
+  background: var(--bg-white);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 4px 24px 12px;
+  max-width: 720px;
+}
 `;
 if (typeof document !== 'undefined' && !document.getElementById('activity-page-styles')) {
   style.id = 'activity-page-styles';

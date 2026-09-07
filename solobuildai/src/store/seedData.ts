@@ -151,6 +151,7 @@ export const seedData: AppState = {
   candidates,
   recruiters,
   calls,
+  directCalls: [],
   activity,
   initialized: true,
 };

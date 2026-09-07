@@ -57,6 +57,21 @@ const iconMap: Record<ActivityType, { icon: React.ReactNode; color: string; bg: 
     color: 'var(--status-success-text)',
     bg: 'var(--status-success-bg)',
   },
+  direct_call_completed: {
+    icon: <Phone size={14} />,
+    color: 'var(--brand-primary)',
+    bg: 'var(--brand-primary-light)',
+  },
+  direct_call_failed: {
+    icon: <PhoneOff size={14} />,
+    color: 'var(--status-error-text)',
+    bg: 'var(--status-error-bg)',
+  },
+  direct_call_no_answer: {
+    icon: <PhoneMissed size={14} />,
+    color: 'var(--status-warning-text)',
+    bg: 'var(--status-warning-bg)',
+  },
 };
 
 export const ActivityItemComponent: React.FC<ActivityItemProps> = ({ item }) => {
