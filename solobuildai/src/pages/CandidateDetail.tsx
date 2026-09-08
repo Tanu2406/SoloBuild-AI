@@ -1,198 +1,363 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Briefcase, Play, Clock, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft, Phone, Mail, MapPin, Briefcase,
+  Calendar, CheckCircle2, XCircle, Play, Pause, RotateCcw, Clock
+} from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { CandidateStatusBadge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { useCandidate } from '../store/appStore';
+import { DialerModal } from '../components/product/DialerModal';
+import { useAppStore, useCandidate } from '../store/appStore';
+import { useToast } from '../components/ui/Toast';
 
 const CandidateDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  // Stable waveform heights — computed once using a seeded approach
-  const waveformRef = useRef<number[]>(
-    Array.from({ length: 48 }, (_, i) => 14 + Math.abs(Math.sin(i * 1.3) * 14) + (i % 7) * 1.5)
-  );
+  const { dispatch } = useAppStore();
+  const { showToast } = useToast();
 
   const candidate = useCandidate(id || '');
+
+  // Audio player simulation state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [speed, setSpeed] = useState<1 | 1.25 | 1.5 | 2>(1);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Dialer modal
+  const [dialerOpen, setDialerOpen] = useState(false);
+
+  useEffect(() => {
+    if (isPlaying) {
+      timerRef.current = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return prev + 2 * speed;
+        });
+      }, 300);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPlaying, speed]);
 
   if (!candidate) {
     return (
       <div className="page-content">
-        <EmptyState title="Candidate not found" description="This candidate may have been removed." action={{ label: 'Back', onClick: () => navigate(-1) }} />
+        <EmptyState
+          title="Candidate not found"
+          description="This candidate record does not exist or may have been removed."
+          action={{ label: 'Back to Candidates', onClick: () => navigate('/candidates') }}
+        />
       </div>
     );
   }
 
-  const hasCallData = candidate.callDuration && candidate.callDuration !== '—';
+  const handleShortlist = () => {
+    dispatch({
+      type: 'UPDATE_CANDIDATE',
+      payload: { id: candidate.id, updates: { status: 'shortlisted' } },
+    });
+    showToast(`${candidate.name} marked as Shortlisted`, 'success');
+  };
+
+  const handleDisqualify = () => {
+    dispatch({
+      type: 'UPDATE_CANDIDATE',
+      payload: { id: candidate.id, updates: { status: 'not_interested' } },
+    });
+    showToast(`${candidate.name} marked as Not Interested / Disqualified`, 'info');
+  };
+
+  const hasCallRecord = candidate.callDuration && candidate.callDuration !== '—';
+  const totalSeconds = hasCallRecord ? 300 : 0;
+  const currentSeconds = Math.floor((progress / 100) * totalSeconds);
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="page-content animate-fade-in">
-      <button className="workspace__back" onClick={() => navigate(-1)}>
-        <ArrowLeft size={15} /> Back
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-secondary)',
+          fontSize: 'var(--font-size-sm)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          marginBottom: '16px',
+          padding: 0,
+        }}
+      >
+        <ArrowLeft size={14} /> Back
       </button>
 
-      <div className="candidate-detail">
-        {/* Profile header */}
-        <div className="cd-profile">
-          <div className="cd-profile__left">
+      <div style={{ maxWidth: '840px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Profile Card */}
+        <div
+          className="table-container"
+          style={{
+            padding: '24px 28px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: '20px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
             <Avatar name={candidate.name} size="xl" color="var(--brand-primary)" />
-            <div className="cd-profile__info">
-              <h1 className="cd-profile__name">{candidate.name}</h1>
-              <div className="cd-profile__meta">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {candidate.name}
+                </h1>
+                <CandidateStatusBadge status={candidate.status} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                 {candidate.hiringTitle && (
-                  <span className="cd-profile__meta-item"><Briefcase size={13} />{candidate.hiringTitle}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Briefcase size={13} /> {candidate.hiringTitle}
+                  </span>
                 )}
                 {candidate.location && (
-                  <span className="cd-profile__meta-item"><MapPin size={13} />{candidate.location}</span>
+                  <>
+                    <span>·</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={13} /> {candidate.location}
+                    </span>
+                  </>
                 )}
                 {candidate.experience && (
-                  <span className="cd-profile__meta-item">{candidate.experience} experience</span>
+                  <>
+                    <span>·</span>
+                    <span>{candidate.experience} experience</span>
+                  </>
                 )}
-              </div>
-              <div style={{ marginTop: 4 }}>
-                <CandidateStatusBadge status={candidate.status} />
               </div>
             </div>
           </div>
-          <div className="cd-profile__actions">
-            <Button variant="secondary" icon={<Phone size={15} />}>Call again</Button>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              variant="secondary"
+              icon={<Phone size={14} />}
+              onClick={() => setDialerOpen(true)}
+            >
+              Call Candidate
+            </Button>
+            {candidate.status !== 'shortlisted' && (
+              <Button
+                variant="primary"
+                icon={<CheckCircle2 size={14} />}
+                onClick={handleShortlist}
+              >
+                Shortlist
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="cd-body">
-          {/* Contact */}
-          <div className="cd-card">
-            <h3 className="cd-card__title">Contact</h3>
-            <div className="cd-contact-list">
-              <a href={`tel:${candidate.phone}`} className="cd-contact-item">
-                <div className="cd-contact-item__icon"><Phone size={14} /></div>
+        {/* Contact Info & Scorecard Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '16px', alignItems: 'start' }}>
+          {/* Contact Details */}
+          <div className="table-container" style={{ padding: '20px' }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Contact Details
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
+              <a
+                href={`tel:${candidate.phone}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)' }}
+              >
+                <div style={{ width: '28px', height: '28px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
+                  <Phone size={14} />
+                </div>
                 <span>{candidate.phone}</span>
               </a>
+
               {candidate.email && (
-                <a href={`mailto:${candidate.email}`} className="cd-contact-item">
-                  <div className="cd-contact-item__icon"><Mail size={14} /></div>
-                  <span>{candidate.email}</span>
+                <a
+                  href={`mailto:${candidate.email}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                >
+                  <div style={{ width: '28px', height: '28px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
+                    <Mail size={14} />
+                  </div>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{candidate.email}</span>
                 </a>
               )}
             </div>
+
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                icon={<Calendar size={14} />}
+                onClick={() => showToast(`Interview invite queued for ${candidate.name}`, 'success')}
+              >
+                Schedule Interview
+              </Button>
+              {candidate.status !== 'not_interested' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  fullWidth
+                  icon={<XCircle size={14} />}
+                  onClick={handleDisqualify}
+                >
+                  Disqualify
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Recruitment activity */}
-          {hasCallData ? (
-            <div className="cd-card">
-              <h3 className="cd-card__title">Recruitment activity</h3>
-
-              <div className="cd-call-record">
-                <div className="cd-call-record__header">
-                  <div className="cd-call-record__icon">
-                    <Phone size={14} />
-                  </div>
-                  <div className="cd-call-record__info">
-                    <span className="cd-call-record__label">Screening call completed</span>
-                    <span className="cd-call-record__time">{candidate.lastActivity}</span>
-                  </div>
-                  <div className="cd-call-record__right">
-                    <span className="cd-call-record__duration">
-                      <Clock size={12} /> {candidate.callDuration}
-                    </span>
-                    <CandidateStatusBadge status={candidate.status} />
-                  </div>
+          {/* AI Scorecard & Screening Analysis */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Scorecard */}
+            <div className="table-container" style={{ padding: '20px' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                AI Qualification Scorecard
+              </span>
+              <div className="scorecard-grid" style={{ marginTop: '12px' }}>
+                <div className="scorecard-card">
+                  <span className="scorecard-card__label">Availability</span>
+                  <span className="scorecard-card__value">
+                    {candidate.status === 'shortlisted' ? 'Immediate' : '30 Days'}
+                  </span>
                 </div>
-
-                {/* Waveform player (visual) */}
-                <div className="cd-player">
-                  <button className="cd-player__play" aria-label="Play recording">
-                    <Play size={16} fill="currentColor" />
-                  </button>
-                  <div className="cd-player__waveform">
-                    {waveformRef.current.map((h, i) => (
-                      <div
-                        key={i}
-                        className="cd-player__bar"
-                        style={{ height: `${h}px`, opacity: i < 22 ? 1 : 0.3 }}
-                      />
-                    ))}
-                  </div>
-                  <span className="cd-player__time">{candidate.callDuration}</span>
+                <div className="scorecard-card">
+                  <span className="scorecard-card__label">Compensation Fit</span>
+                  <span className="scorecard-card__value" style={{ color: 'var(--status-success-text)' }}>
+                    Aligned with Budget
+                  </span>
+                </div>
+                <div className="scorecard-card">
+                  <span className="scorecard-card__label">Experience</span>
+                  <span className="scorecard-card__value">{candidate.experience || '3+ years'}</span>
+                </div>
+                <div className="scorecard-card">
+                  <span className="scorecard-card__label">AI Screening Match</span>
+                  <span className="scorecard-card__value" style={{ color: 'var(--brand-primary)' }}>
+                    {candidate.status === 'shortlisted' ? '94% Qualified' : '82% Match'}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* AI summary */}
-              {candidate.aiSummary && (
-                <div className="cd-ai-summary">
-                  <div className="cd-ai-summary__label">
-                    <span className="cd-ai-summary__dot" />
-                    AI Summary
+            {/* Screening Audio & Transcript */}
+            {hasCallRecord ? (
+              <div className="table-container" style={{ padding: '20px' }}>
+                <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  AI Call Recording & Notes
+                </span>
+
+                <div className="audio-player-card" style={{ marginTop: '12px' }}>
+                  <div className="audio-player-top">
+                    <div className="audio-player-ctrls">
+                      <button
+                        className="audio-play-btn"
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        aria-label={isPlaying ? 'Pause' : 'Play'}
+                      >
+                        {isPlaying ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
+                      </button>
+                      <div>
+                        <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, display: 'block' }}>
+                          Screening Audio Session
+                        </span>
+                        <span className="audio-time-label">
+                          {formatTime(currentSeconds)} / {candidate.callDuration}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button className="audio-speed-btn" onClick={() => setProgress(0)} title="Restart">
+                        <RotateCcw size={12} />
+                      </button>
+                      <button
+                        className="audio-speed-btn"
+                        onClick={() => {
+                          const speeds: (1 | 1.25 | 1.5 | 2)[] = [1, 1.25, 1.5, 2];
+                          const nextIdx = (speeds.indexOf(speed) + 1) % speeds.length;
+                          setSpeed(speeds[nextIdx]);
+                        }}
+                      >
+                        {speed}x
+                      </button>
+                    </div>
                   </div>
-                  <p className="cd-ai-summary__text">{candidate.aiSummary}</p>
+
+                  <div
+                    className="audio-scrubber-track"
+                    onClick={e => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      const newPct = Math.max(0, Math.min(100, (clickX / rect.width) * 100));
+                      setProgress(newPct);
+                    }}
+                  >
+                    <div className="audio-scrubber-fill" style={{ width: `${progress}%` }} />
+                  </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="cd-card">
-              <h3 className="cd-card__title">Recruitment activity</h3>
-              {candidate.status === 'added' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                  <Clock size={14} /> Waiting to be called
-                </div>
-              ) : candidate.status === 'no_answer' || candidate.status === 'busy' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--status-warning-text)', fontSize: 'var(--font-size-sm)' }}>
-                  <AlertCircle size={14} />
-                  {candidate.status === 'no_answer' ? 'No answer on last call attempt' : 'Line was busy'}
-                  {candidate.lastActivity && <span style={{ color: 'var(--text-tertiary)' }}>— {candidate.lastActivity}</span>}
-                </div>
-              ) : (
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>No calls completed yet.</p>
-              )}
-            </div>
-          )}
+
+                {candidate.aiSummary && (
+                  <div
+                    style={{
+                      marginTop: '14px',
+                      padding: '14px 16px',
+                      background: 'var(--brand-primary-light)',
+                      border: '1px solid var(--brand-primary-border)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                    }}
+                  >
+                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      AI Screening Summary
+                    </span>
+                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                      {candidate.aiSummary}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="table-container" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <Clock size={20} style={{ margin: '0 auto 8px', color: 'var(--text-tertiary)' }} />
+                <span style={{ fontSize: 'var(--font-size-sm)', display: 'block' }}>
+                  No screening call completed for this candidate yet.
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      <DialerModal
+        open={dialerOpen}
+        initialPhone={candidate.phone}
+        initialCandidateName={candidate.name}
+        onClose={() => setDialerOpen(false)}
+      />
     </div>
   );
 };
 
 export default CandidateDetail;
-
-const style = document.createElement('style');
-style.textContent = `
-.candidate-detail { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
-.cd-profile { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.cd-profile__left { display: flex; align-items: flex-start; gap: 18px; }
-.cd-profile__info { display: flex; flex-direction: column; gap: 6px; }
-.cd-profile__name { font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
-.cd-profile__meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.cd-profile__meta-item { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); color: var(--text-secondary); }
-.cd-profile__actions { flex-shrink: 0; }
-.cd-body { display: flex; flex-direction: column; gap: 16px; }
-.cd-card { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.cd-card__title { font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary); }
-.cd-contact-list { display: flex; flex-direction: column; gap: 10px; }
-.cd-contact-item { display: flex; align-items: center; gap: 10px; font-size: var(--font-size-base); color: var(--text-primary); text-decoration: none; transition: color var(--transition-fast); }
-.cd-contact-item:hover { color: var(--brand-primary); }
-.cd-contact-item__icon { width: 30px; height: 30px; border-radius: var(--radius-sm); background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); flex-shrink: 0; }
-.cd-call-record { display: flex; flex-direction: column; gap: 14px; padding: 16px; background: var(--bg-app); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-.cd-call-record__header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.cd-call-record__icon { width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--status-success-bg); color: var(--status-success-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.cd-call-record__info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.cd-call-record__label { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
-.cd-call-record__time { font-size: var(--font-size-xs); color: var(--text-tertiary); }
-.cd-call-record__right { display: flex; align-items: center; gap: 10px; }
-.cd-call-record__duration { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: 500; }
-.cd-player { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
-.cd-player__play { width: 34px; height: 34px; border-radius: 50%; background: var(--brand-primary); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--transition-fast); }
-.cd-player__play:hover { background: var(--brand-primary-hover); }
-.cd-player__waveform { flex: 1; display: flex; align-items: center; gap: 2px; height: 40px; overflow: hidden; }
-.cd-player__bar { width: 3px; border-radius: 2px; background: var(--brand-primary); flex-shrink: 0; }
-.cd-player__time { font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
-.cd-ai-summary { display: flex; flex-direction: column; gap: 8px; }
-.cd-ai-summary__label { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-xs); font-weight: 600; color: var(--brand-primary); letter-spacing: 0.04em; text-transform: uppercase; }
-.cd-ai-summary__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand-primary); }
-.cd-ai-summary__text { font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.6; padding: 14px 16px; background: var(--brand-primary-light); border: 1px solid #bfdbfe; border-radius: var(--radius-md); }
-`;
-if (typeof document !== 'undefined' && !document.getElementById('candidate-detail-styles')) {
-  style.id = 'candidate-detail-styles';
-  document.head.appendChild(style);
-}

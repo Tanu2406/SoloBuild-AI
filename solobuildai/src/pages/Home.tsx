@@ -1,565 +1,554 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Briefcase, Phone, Star, ChevronRight, TrendingUp,
-  Plus, AlertCircle, PauseCircle
+  Plus, Phone, Briefcase, ChevronRight,
+  CheckCircle2, AlertCircle, PauseCircle,
+  Play, Users, PhoneCall, Sparkles
 } from 'lucide-react';
-import { StatCard } from '../components/ui/StatCard';
-import { HiringStatusBadge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { HiringStatusBadge, CandidateStatusBadge } from '../components/ui/Badge';
 import { ProgressBar } from '../components/ui/ProgressBar';
-import { ActivityItemComponent } from '../components/product/ActivityItem';
+import { Avatar } from '../components/ui/Avatar';
 import { DialerModal } from '../components/product/DialerModal';
-import { EmptyState } from '../components/ui/EmptyState';
-import { useHirings, useActivity } from '../store/appStore';
+import { CandidateDrawer } from '../components/product/CandidateDrawer';
+import { useAppStore, useHirings, useCandidates, useActivity, useRecruiters } from '../store/appStore';
+import { callSimulationService } from '../services/callSimulationService';
+import { useToast } from '../components/ui/Toast';
+import type { Candidate, Hiring } from '../types';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { state, dispatch } = useAppStore();
   const hirings = useHirings();
+  const candidates = useCandidates();
   const activity = useActivity();
+  const recruiters = useRecruiters();
+
+  // Dialog & Drawer state
   const [dialerOpen, setDialerOpen] = useState(false);
+  const [dialerCandidate, setDialerCandidate] = useState<{ phone: string; name?: string } | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-  // Live stats from store
+  // Computed Operational Stats
   const activeHirings = hirings.filter(h => h.status === 'calling' || h.status === 'paused');
-  const totalContacted = hirings.reduce((s, h) => s + h.contacted, 0);
+  const callingHiring = hirings.find(h => h.status === 'calling');
   const totalCandidates = hirings.reduce((s, h) => s + h.candidateCount, 0);
+  const totalContacted = hirings.reduce((s, h) => s + h.contacted, 0);
+  const totalConnected = hirings.reduce((s, h) => s + h.connected, 0);
   const totalShortlisted = hirings.reduce((s, h) => s + h.shortlisted, 0);
-  const totalInterested = hirings.reduce((s, h) => s + h.interested, 0);
 
-  // Hirings that need attention: paused, or draft with 0 candidates
-  const needsAttention = hirings.filter(
-    h => h.status === 'paused' ||
-    (h.status === 'draft' && h.candidateCount === 0)
-  );
+  const contactRate = totalCandidates > 0 ? Math.round((totalContacted / totalCandidates) * 100) : 0;
+  const connectRate = totalContacted > 0 ? Math.round((totalConnected / totalContacted) * 100) : 0;
+  const shortlistRate = totalContacted > 0 ? Math.round((totalShortlisted / totalContacted) * 100) : 0;
+
+  // Candidates awaiting review (shortlisted or interested)
+  const candidatesForReview = candidates
+    .filter(c => c.status === 'shortlisted' || c.status === 'interested')
+    .slice(0, 5);
+
+  const handleInspectCandidate = (cand: Candidate) => {
+    setSelectedCandidate(cand);
+    setDrawerOpen(true);
+  };
+
+  const handleCallAgain = (cand: Candidate) => {
+    setDrawerOpen(false);
+    setDialerCandidate({ phone: cand.phone, name: cand.name });
+    setDialerOpen(true);
+  };
+
+  const handlePauseCalling = (hiring: Hiring) => {
+    callSimulationService.pause(hiring.id, dispatch, hiring.title);
+    showToast(`Calling paused for ${hiring.title}`, 'info');
+  };
+
+  const handleResumeCalling = (hiring: Hiring) => {
+    callSimulationService.resume(hiring.id, state, dispatch, hiring.title);
+    showToast(`Calling resumed for ${hiring.title}`, 'success');
+  };
 
   return (
     <div className="page-content animate-fade-in">
-
-      {/* ——— GREETING + PRIMARY ACTIONS ——— */}
-      <div className="home-hero">
-        <div className="home-hero__text">
-          <h1 className="home-hero__greeting">{greeting} 👋</h1>
-          <p className="home-hero__sub">What would you like to do?</p>
+      {/* ——— COMMAND BAR ——— */}
+      <div className="page-header" style={{ marginBottom: '18px' }}>
+        <div className="page-header__text">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1 className="page-header__title">Recruitment Operations</h1>
+            <span
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 600,
+                color: 'var(--brand-primary)',
+                background: 'var(--brand-primary-light)',
+                border: '1px solid var(--brand-primary-border)',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-full)',
+              }}
+            >
+              TalentCorp · Enterprise
+            </span>
+          </div>
+          <p className="page-header__subtitle">
+            Autonomous AI voice screening cockpit and active candidate decision pipeline.
+          </p>
         </div>
 
-        <div className="home-actions">
-          <button
-            className="home-action home-action--primary"
+        <div className="page-header__actions">
+          <Button
+            variant="secondary"
+            icon={<Phone size={15} />}
+            onClick={() => {
+              setDialerCandidate(null);
+              setDialerOpen(true);
+            }}
+          >
+            Dial a Number
+          </Button>
+          <Button
+            variant="primary"
+            icon={<Plus size={16} />}
             onClick={() => navigate('/hiring/create')}
           >
-            <div className="home-action__icon">
-              <Plus size={22} strokeWidth={2} />
-            </div>
-            <div className="home-action__text">
-              <span className="home-action__label">Create Hiring</span>
-              <span className="home-action__sub">Bulk AI screening</span>
-            </div>
-          </button>
+            Create Hiring
+          </Button>
+        </div>
+      </div>
 
-          <button
-            className="home-action home-action--secondary"
-            onClick={() => setDialerOpen(true)}
+      {/* ——— LIVE SCREENING OPERATIONS MONITOR ——— */}
+      {callingHiring ? (
+        <div className="ops-banner ops-banner--active">
+          <div className="ops-banner__left">
+            <span className="ops-banner__pulse-dot" />
+            <div className="ops-banner__text">
+              <span className="ops-banner__title">
+                AI Screening Active: {callingHiring.title}
+              </span>
+              <span className="ops-banner__sub">
+                {callingHiring.contacted} of {callingHiring.candidateCount} candidates contacted ·{' '}
+                {callingHiring.shortlisted} shortlisted so far · Auto-dialing candidate pool
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<PauseCircle size={14} />}
+              onClick={() => handlePauseCalling(callingHiring)}
+            >
+              Pause Calling
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<ChevronRight size={14} />}
+              onClick={() => navigate(`/hiring/${callingHiring.id}`)}
+            >
+              Open Workspace
+            </Button>
+          </div>
+        </div>
+      ) : activeHirings.some(h => h.status === 'paused') ? (
+        <div className="ops-banner" style={{ background: 'var(--status-warning-bg)', borderColor: 'var(--status-warning-border)' }}>
+          <div className="ops-banner__left">
+            <AlertCircle size={16} color="var(--status-warning-text)" />
+            <div className="ops-banner__text">
+              <span className="ops-banner__title" style={{ color: 'var(--status-warning-text)' }}>
+                Screening Paused
+              </span>
+              <span className="ops-banner__sub">
+                {activeHirings.filter(h => h.status === 'paused').map(h => h.title).join(', ')} currently paused.
+              </span>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Play size={13} />}
+            onClick={() => {
+              const paused = activeHirings.find(h => h.status === 'paused');
+              if (paused) handleResumeCalling(paused);
+            }}
           >
-            <div className="home-action__icon home-action__icon--secondary">
-              <Phone size={22} strokeWidth={2} />
-            </div>
-            <div className="home-action__text">
-              <span className="home-action__label">Dial a Number</span>
-              <span className="home-action__sub">Quick individual call</span>
-            </div>
-          </button>
+            Resume Calling
+          </Button>
+        </div>
+      ) : null}
+
+      {/* ——— OPERATIONAL METRIC TILES ——— */}
+      <div className="metrics-row">
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>ACTIVE CAMPAIGNS</span>
+            <Briefcase size={15} color="var(--text-tertiary)" />
+          </div>
+          <div className="metric-tile__value">{activeHirings.length}</div>
+          <span className="metric-tile__sub">
+            {hirings.length} total job role{hirings.length === 1 ? '' : 's'} managed
+          </span>
+        </div>
+
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>CANDIDATES SCREENED</span>
+            <PhoneCall size={15} color="var(--text-tertiary)" />
+          </div>
+          <div className="metric-tile__value">{totalContacted}</div>
+          <span className="metric-tile__sub">
+            {contactRate}% of {totalCandidates} total candidates processed
+          </span>
+        </div>
+
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>CALL CONNECT RATE</span>
+            <Users size={15} color="var(--text-tertiary)" />
+          </div>
+          <div className="metric-tile__value">{connectRate}%</div>
+          <span className="metric-tile__sub">
+            {totalConnected} pick-ups across AI campaigns
+          </span>
+        </div>
+
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>QUALIFIED / SHORTLISTED</span>
+            <Sparkles size={15} color="var(--brand-primary)" />
+          </div>
+          <div className="metric-tile__value" style={{ color: 'var(--brand-primary)' }}>
+            {totalShortlisted}
+          </div>
+          <span className="metric-tile__sub">
+            {shortlistRate}% pass rate ready for human interview
+          </span>
         </div>
       </div>
 
-      {/* ——— NEEDS YOUR ATTENTION ——— */}
-      {needsAttention.length > 0 && (
-        <div className="home-attention animate-fade-in">
-          <div className="home-attention__header">
-            <AlertCircle size={15} />
-            Needs your attention
-          </div>
-          <div className="home-attention__items">
-            {needsAttention.map(h => (
-              <button
-                key={h.id}
-                className="home-attention__item"
-                onClick={() => navigate(h.status === 'draft' ? '/hiring/create' : `/hiring/${h.id}`)}
-              >
-                <div className="home-attention__item-left">
-                  {h.status === 'paused' ? (
-                    <PauseCircle size={15} color="var(--status-warning-text)" />
-                  ) : (
-                    <Briefcase size={15} color="var(--text-tertiary)" />
-                  )}
-                  <span className="home-attention__item-title">{h.title}</span>
-                  <span className="home-attention__item-loc">{h.location}</span>
-                </div>
-                <div className="home-attention__item-right">
-                  <span className="home-attention__item-badge">
-                    {h.status === 'paused' ? 'Paused — resume calling' : 'Draft — not launched'}
-                  </span>
-                  <ChevronRight size={14} />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ——— STATS ——— */}
-      <div className="home-stats">
-        <StatCard label="Active Hirings" value={activeHirings.length} icon={<Briefcase size={18} />} />
-        <StatCard
-          label="Candidates Contacted"
-          value={totalContacted}
-          sub={`of ${totalCandidates} total`}
-          icon={<Phone size={18} />}
-        />
-        <StatCard label="Interested" value={totalInterested} icon={<TrendingUp size={18} />} />
-        <StatCard label="Shortlisted" value={totalShortlisted} icon={<Star size={18} />} />
-      </div>
-
-      {/* ——— MAIN BODY ——— */}
-      <div className="home-body">
-
-        {/* Active hirings */}
-        <div className="home-section">
-          <div className="home-section__header">
-            <h2 className="home-section__title">Active Hirings</h2>
-            <button className="home-section__link" onClick={() => navigate('/hiring')}>
-              View all <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {activeHirings.length === 0 ? (
-            <div className="home-section__empty">
-              <EmptyState
-                icon={<Briefcase size={22} />}
-                title="No active hirings"
-                description="Create a hiring to start AI screening."
-                action={{ label: 'Create Hiring', onClick: () => navigate('/hiring/create') }}
-              />
-            </div>
-          ) : (
-            <div className="home-hirings">
-              {activeHirings.map(hiring => (
-                <div
-                  key={hiring.id}
-                  className="home-hiring-row"
-                  onClick={() => navigate(`/hiring/${hiring.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => e.key === 'Enter' && navigate(`/hiring/${hiring.id}`)}
+      {/* ——— MAIN OPERATIONAL GRID ——— */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: '20px', alignItems: 'start' }}>
+        {/* LEFT: ACTIVE HIRINGS TABLE */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="table-container">
+            <div className="table-toolbar">
+              <div className="table-toolbar__left">
+                <span style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Active Hiring Campaigns
+                </span>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--text-secondary)',
+                    background: 'var(--bg-subtle)',
+                    padding: '2px 7px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 500,
+                  }}
                 >
-                  <div className="home-hiring-row__left">
-                    <div className="home-hiring-row__header">
-                      <span className="home-hiring-row__title">{hiring.title}</span>
-                      <HiringStatusBadge status={hiring.status} />
-                    </div>
-                    <span className="home-hiring-row__location">{hiring.location}</span>
-                    <div className="home-hiring-row__progress">
-                      <ProgressBar value={hiring.contacted} total={hiring.candidateCount || 1} />
-                      <span className="home-hiring-row__progress-text">
-                        {hiring.contacted} / {hiring.candidateCount} contacted
-                      </span>
-                    </div>
-                  </div>
-                  <div className="home-hiring-row__stats">
-                    <div className="home-hiring-row__stat">
-                      <span className="home-hiring-row__stat-val">{hiring.connected}</span>
-                      <span className="home-hiring-row__stat-label">Connected</span>
-                    </div>
-                    <div className="home-hiring-row__stat">
-                      <span className="home-hiring-row__stat-val">{hiring.interested}</span>
-                      <span className="home-hiring-row__stat-label">Interested</span>
-                    </div>
-                    <div className="home-hiring-row__stat">
-                      <span className="home-hiring-row__stat-val home-hiring-row__stat-val--accent">
-                        {hiring.shortlisted}
-                      </span>
-                      <span className="home-hiring-row__stat-label">Shortlisted</span>
-                    </div>
-                  </div>
-                  <ChevronRight size={16} color="var(--text-tertiary)" />
+                  {activeHirings.length} active
+                </span>
+              </div>
+              <div className="table-toolbar__right">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/hiring')}>
+                  View all campaigns <ChevronRight size={13} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Role & Location</th>
+                    <th>AI Recruiter</th>
+                    <th>Progress</th>
+                    <th style={{ textAlign: 'center' }}>Qualified</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeHirings.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                        No active campaigns right now. Click "Create Hiring" to launch your next screening.
+                      </td>
+                    </tr>
+                  ) : (
+                    activeHirings.map(h => {
+                      const rec = recruiters.find(r => r.id === h.aiRecruiterId);
+                      return (
+                        <tr
+                          key={h.id}
+                          onClick={() => navigate(`/hiring/${h.id}`)}
+                        >
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{h.title}</span>
+                              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                                {h.location}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            {rec ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar name={rec.name} size="sm" color={rec.avatarColor} />
+                                <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>{rec.name}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>Standard</span>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '130px' }}>
+                              <ProgressBar value={h.contacted} total={h.candidateCount || 1} />
+                              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                                {h.contacted}/{h.candidateCount} ({Math.round(((h.contacted) / (h.candidateCount || 1)) * 100)}%)
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--brand-primary)', fontSize: 'var(--font-size-md)' }}>
+                              {h.shortlisted}
+                            </span>
+                          </td>
+                          <td>
+                            <HiringStatusBadge status={h.status} />
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                              {h.status === 'calling' ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePauseCalling(h)}
+                                  title="Pause calling"
+                                >
+                                  Pause
+                                </Button>
+                              ) : h.status === 'paused' ? (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleResumeCalling(h)}
+                                  title="Resume calling"
+                                >
+                                  Resume
+                                </Button>
+                              ) : null}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/hiring/${h.id}`)}
+                              >
+                                Console
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ATTENTION QUEUE: CANDIDATES READY FOR REVIEW */}
+          {candidatesForReview.length > 0 && (
+            <div className="table-container">
+              <div className="table-toolbar" style={{ background: 'var(--status-success-bg)', borderBottomColor: 'var(--status-success-border)' }}>
+                <div className="table-toolbar__left">
+                  <CheckCircle2 size={16} color="var(--status-success-text)" />
+                  <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--status-success-text)' }}>
+                    Action Required: {candidatesForReview.length} Candidates Qualified & Ready for HR Review
+                  </span>
                 </div>
-              ))}
+                <div className="table-toolbar__right">
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/candidates')}>
+                    View all candidates <ChevronRight size={13} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Candidate</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Call Duration</th>
+                      <th style={{ textAlign: 'right' }}>Review</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidatesForReview.map(cand => (
+                      <tr key={cand.id} onClick={() => handleInspectCandidate(cand)}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar name={cand.name} size="sm" color="var(--brand-primary)" />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cand.name}</span>
+                              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>{cand.phone}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                            {cand.hiringTitle || '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <CandidateStatusBadge status={cand.status} />
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                            {cand.callDuration || '—'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInspectCandidate(cand);
+                            }}
+                          >
+                            Inspect
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Recent activity */}
-        <div className="home-section">
-          <div className="home-section__header">
-            <h2 className="home-section__title">Recent Activity</h2>
-            <button className="home-section__link" onClick={() => navigate('/activity')}>
-              View all <ChevronRight size={14} />
-            </button>
-          </div>
+        {/* RIGHT: REAL-TIME STREAM */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="table-container">
+            <div className="table-toolbar">
+              <span style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Live Screening Stream
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/activity')}>
+                Audit Log <ChevronRight size={13} />
+              </Button>
+            </div>
 
-          {activity.length === 0 ? (
-            <div style={{ padding: '28px 24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)' }}>
-              No activity yet. Start a hiring to see results here.
+            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '580px', overflowY: 'auto' }}>
+              {activity.slice(0, 10).map(item => {
+                // Find candidate matching item if any
+                const matchedCandidate = item.candidateName
+                  ? candidates.find(c => c.name.toLowerCase() === item.candidateName?.toLowerCase())
+                  : null;
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      fontSize: 'var(--font-size-sm)',
+                      transition: 'background var(--transition-fast)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: 'var(--radius-full)',
+                        background:
+                          item.type === 'candidate_shortlisted' || item.type === 'candidate_interested'
+                            ? 'var(--status-success-bg)'
+                            : item.type === 'call_no_answer'
+                            ? 'var(--status-warning-bg)'
+                            : 'var(--brand-primary-light)',
+                        color:
+                          item.type === 'candidate_shortlisted' || item.type === 'candidate_interested'
+                            ? 'var(--status-success-text)'
+                            : item.type === 'call_no_answer'
+                            ? 'var(--status-warning-text)'
+                            : 'var(--brand-primary-text)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: '2px',
+                      }}
+                    >
+                      <PhoneCall size={13} />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {item.candidateName || item.hiringTitle || 'Recruitment Event'}
+                        </span>
+                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                          {item.timeAgo}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        {item.description}
+                      </span>
+                    </div>
+
+                    {matchedCandidate && (
+                      <button
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--brand-primary)',
+                          fontSize: 'var(--font-size-xs)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '4px',
+                          alignSelf: 'center',
+                        }}
+                        onClick={() => handleInspectCandidate(matchedCandidate)}
+                        title="Inspect Candidate"
+                      >
+                        Inspect
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <div className="home-activity-card">
-              {activity.slice(0, 8).map(item => (
-                <ActivityItemComponent key={item.id} item={item} />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Dialer modal */}
-      <DialerModal open={dialerOpen} onClose={() => setDialerOpen(false)} />
+      {/* ——— IN-CONTEXT CANDIDATE EVALUATION DRAWER ——— */}
+      <CandidateDrawer
+        candidate={selectedCandidate}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onCallAgain={handleCallAgain}
+      />
+
+      {/* ——— DIALER MODAL ——— */}
+      <DialerModal
+        open={dialerOpen}
+        initialPhone={dialerCandidate?.phone}
+        initialCandidateName={dialerCandidate?.name}
+        onClose={() => {
+          setDialerOpen(false);
+          setDialerCandidate(null);
+        }}
+      />
     </div>
   );
 };
 
 export default Home;
-
-// Styles
-const style = document.createElement('style');
-style.textContent = `
-/* Hero section */
-.home-hero {
-  margin-bottom: 28px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.home-hero__text { display: flex; flex-direction: column; gap: 4px; }
-
-.home-hero__greeting {
-  font-size: var(--font-size-5xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-}
-
-.home-hero__sub {
-  font-size: var(--font-size-md);
-  color: var(--text-secondary);
-}
-
-/* Action buttons */
-.home-actions {
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
-  align-items: center;
-}
-
-.home-action {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 20px;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: none;
-  text-align: left;
-  min-width: 190px;
-}
-
-.home-action--primary {
-  background: var(--brand-primary);
-  color: white;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
-}
-
-.home-action--primary:hover {
-  background: var(--brand-primary-hover);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-  transform: translateY(-1px);
-}
-
-.home-action--secondary {
-  background: var(--bg-white);
-  color: var(--text-primary);
-  border: 1.5px solid var(--border-default);
-  box-shadow: var(--shadow-xs);
-}
-
-.home-action--secondary:hover {
-  border-color: var(--brand-primary);
-  background: var(--brand-primary-light);
-  transform: translateY(-1px);
-}
-
-.home-action__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.home-action__icon--secondary {
-  background: var(--brand-primary-light);
-  color: var(--brand-primary);
-}
-
-.home-action--primary .home-action__icon {
-  background: rgba(255,255,255,0.2);
-}
-
-.home-action__text { display: flex; flex-direction: column; gap: 2px; }
-
-.home-action__label {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.home-action__sub {
-  font-size: var(--font-size-xs);
-  opacity: 0.75;
-  line-height: 1.2;
-}
-
-.home-action--secondary .home-action__sub {
-  color: var(--text-secondary);
-  opacity: 1;
-}
-
-/* Attention section */
-.home-attention {
-  margin-bottom: 24px;
-  background: var(--status-warning-bg);
-  border: 1px solid var(--status-warning-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.home-attention__header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--status-warning-text);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--status-warning-border);
-}
-
-.home-attention__items { display: flex; flex-direction: column; }
-
-.home-attention__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 11px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  border-bottom: 1px solid var(--status-warning-border);
-  transition: background var(--transition-fast);
-  text-align: left;
-  width: 100%;
-}
-
-.home-attention__item:last-child { border-bottom: none; }
-
-.home-attention__item:hover { background: rgba(251,191,36,0.08); }
-
-.home-attention__item-left {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 1;
-  min-width: 0;
-}
-
-.home-attention__item-title {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.home-attention__item-loc {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-}
-
-.home-attention__item-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-}
-
-.home-attention__item-badge {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: var(--status-warning-text);
-}
-
-/* Stats */
-.home-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 28px;
-}
-
-/* Body */
-.home-body {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
-  align-items: start;
-}
-
-.home-section {
-  background: var(--bg-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.home-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px 16px;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.home-section__title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.home-section__link {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: var(--font-size-sm);
-  color: var(--brand-primary);
-  font-weight: 500;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.home-section__link:hover { opacity: 0.7; }
-
-.home-section__empty { padding: 16px; }
-
-/* Hirings rows */
-.home-hirings { display: flex; flex-direction: column; }
-
-.home-hiring-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border-default);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.home-hiring-row:last-child { border-bottom: none; }
-.home-hiring-row:hover { background: var(--bg-hover); }
-
-.home-hiring-row__left {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.home-hiring-row__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.home-hiring-row__title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.home-hiring-row__location {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-}
-
-.home-hiring-row__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 280px;
-}
-
-.home-hiring-row__progress-text {
-  font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
-}
-
-.home-hiring-row__stats {
-  display: flex;
-  gap: 20px;
-  flex-shrink: 0;
-}
-
-.home-hiring-row__stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.home-hiring-row__stat-val {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.home-hiring-row__stat-val--accent { color: var(--brand-primary); }
-.home-hiring-row__stat-label { font-size: 11px; color: var(--text-tertiary); }
-
-/* Activity */
-.home-activity-card { padding: 4px 24px 8px; }
-
-/* Responsive */
-@media (max-width: 1100px) {
-  .home-hero { flex-direction: column; gap: 20px; }
-  .home-actions { width: 100%; }
-  .home-action { flex: 1; min-width: 0; }
-  .home-stats { grid-template-columns: repeat(2, 1fr); }
-  .home-body { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 640px) {
-  .home-hero__greeting { font-size: var(--font-size-4xl); }
-  .home-actions { flex-direction: column; }
-  .home-action { width: 100%; min-width: 0; }
-  .home-stats { grid-template-columns: repeat(2, 1fr); }
-  .home-hiring-row__stats { display: none; }
-}
-`;
-if (typeof document !== 'undefined' && !document.getElementById('home-page-styles')) {
-  style.id = 'home-page-styles';
-  document.head.appendChild(style);
-}

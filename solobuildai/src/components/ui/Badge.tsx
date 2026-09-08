@@ -31,20 +31,20 @@ export const HiringStatusBadge: React.FC<{ status: HiringStatus }> = ({ status }
 };
 
 export const CandidateStatusBadge: React.FC<{ status: CandidateStatus }> = ({ status }) => {
-  const map: Record<CandidateStatus, { variant: BadgeVariant; label: string }> = {
-    added: { variant: 'neutral', label: 'Added' },
-    calling: { variant: 'info', label: 'Calling…' },
-    contacted: { variant: 'info', label: 'Contacted' },
-    connected: { variant: 'primary', label: 'Connected' },
-    interested: { variant: 'success', label: 'Interested' },
-    shortlisted: { variant: 'success', label: 'Shortlisted' },
-    not_interested: { variant: 'neutral', label: 'Not Interested' },
-    no_answer: { variant: 'warning', label: 'No Answer' },
-    busy: { variant: 'warning', label: 'Busy' },
-    call_failed: { variant: 'error', label: 'Call Failed' },
+  const map: Record<CandidateStatus, { variant: BadgeVariant; label: string; dot?: boolean }> = {
+    added: { variant: 'neutral', label: 'Queued', dot: false },
+    calling: { variant: 'info', label: 'Calling…', dot: true },
+    contacted: { variant: 'info', label: 'Contacted', dot: false },
+    connected: { variant: 'primary', label: 'Connected', dot: false },
+    interested: { variant: 'success', label: 'Interested', dot: true },
+    shortlisted: { variant: 'success', label: 'Shortlisted', dot: true },
+    not_interested: { variant: 'neutral', label: 'Not Interested', dot: false },
+    no_answer: { variant: 'warning', label: 'No Answer', dot: true },
+    busy: { variant: 'warning', label: 'Line Busy', dot: false },
+    call_failed: { variant: 'error', label: 'Call Failed', dot: false },
   };
-  const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status, dot: false };
+  return <Badge variant={config.variant} dot={config.dot}>{config.label}</Badge>;
 };
 
 const style = document.createElement('style');

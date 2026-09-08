@@ -15,6 +15,8 @@ import type { DirectCallStatus, CallPurpose, DirectCall } from '../../types';
 interface DialerModalProps {
   open: boolean;
   onClose: () => void;
+  initialPhone?: string;
+  initialCandidateName?: string;
 }
 
 type DialerScreen = 'form' | 'active' | 'result';
@@ -98,17 +100,29 @@ const STATUS_CONFIG: Record<DirectCallStatus, {
 const TERMINAL_STATUSES: DirectCallStatus[] = ['completed', 'no_answer', 'busy', 'failed'];
 const isTerminal = (s: DirectCallStatus) => TERMINAL_STATUSES.includes(s);
 
-export const DialerModal: React.FC<DialerModalProps> = ({ open, onClose }) => {
+export const DialerModal: React.FC<DialerModalProps> = ({
+  open,
+  onClose,
+  initialPhone,
+  initialCandidateName,
+}) => {
   const { showToast } = useToast();
   const { dispatch } = useAppStore();
   const recruiters = useRecruiters();
 
   // Form state
-  const [phone, setPhone] = useState('');
-  const [candidateName, setCandidateName] = useState('');
+  const [phone, setPhone] = useState(initialPhone || '');
+  const [candidateName, setCandidateName] = useState(initialCandidateName || '');
   const [recruiterId, setRecruiterId] = useState('');
   const [purpose, setPurpose] = useState<CallPurpose>('initial_screening');
   const [errors, setErrors] = useState<{ phone?: string; recruiterId?: string }>({});
+
+  useEffect(() => {
+    if (open) {
+      if (initialPhone) setPhone(initialPhone);
+      if (initialCandidateName) setCandidateName(initialCandidateName);
+    }
+  }, [open, initialPhone, initialCandidateName]);
 
   // Call state
   const [screen, setScreen] = useState<DialerScreen>('form');
@@ -169,7 +183,7 @@ export const DialerModal: React.FC<DialerModalProps> = ({ open, onClose }) => {
     const e: { phone?: string; recruiterId?: string } = {};
     if (!phone.trim()) {
       e.phone = 'Candidate phone number is required';
-    } else if (!/^[\d\s\+\-\(\)]{7,}$/.test(phone.trim())) {
+    } else if (!/^[\d\s+\-()]{7,}$/.test(phone.trim())) {
       e.phone = 'Please enter a valid phone number';
     }
     if (!recruiterId) e.recruiterId = 'Please select an AI Recruiter';

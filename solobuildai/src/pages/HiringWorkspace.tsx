@@ -1,27 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, MapPin, Calendar, MoreHorizontal } from 'lucide-react';
+import {
+  ArrowLeft, Pause, Play, MapPin, Calendar,
+  Download, Sparkles, CheckCircle2,
+  Filter, Phone
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
-import { HiringStatusBadge } from '../components/ui/Badge';
+import { HiringStatusBadge, CandidateStatusBadge } from '../components/ui/Badge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { CandidateFunnel } from '../components/product/CandidateFunnel';
 import { ActivityItemComponent } from '../components/product/ActivityItem';
 import { Avatar } from '../components/ui/Avatar';
-import { CandidateStatusBadge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { useAppStore, useHiring, useHiringCandidates, useActivity, useRecruiters, useCalls } from '../store/appStore';
+import { DataTable, type Column } from '../components/ui/DataTable';
+import { CandidateDrawer } from '../components/product/CandidateDrawer';
+import { DialerModal } from '../components/product/DialerModal';
+import {
+  useAppStore,
+  useHiring,
+  useHiringCandidates,
+  useActivity,
+  useRecruiters,
+  useCalls
+} from '../store/appStore';
 import { callSimulationService } from '../services/callSimulationService';
 import { useToast } from '../components/ui/Toast';
-import { Phone } from 'lucide-react';
+import type { Candidate, Call } from '../types';
 
 type WorkspaceTab = 'overview' | 'candidates' | 'calls' | 'results';
 
 const workspaceTabs = [
-  { id: 'overview', label: 'Overview' },
+  { id: 'overview', label: 'Campaign Overview' },
   { id: 'candidates', label: 'Candidates' },
-  { id: 'calls', label: 'Calls' },
-  { id: 'results', label: 'Results' },
+  { id: 'calls', label: 'Call Logs' },
+  { id: 'results', label: 'Shortlist & Decisions' },
 ];
 
 const HiringWorkspace: React.FC = () => {
@@ -29,7 +42,17 @@ const HiringWorkspace: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { state, dispatch } = useAppStore();
+
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
+  const [candidateFilter, setCandidateFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Drawer & Dialer states
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialerOpen, setDialerOpen] = useState(false);
+  const [dialerCandidate, setDialerCandidate] = useState<{ phone: string; name?: string } | null>(null);
 
   const hiring = useHiring(id || '');
   const candidates = useHiringCandidates(id || '');
@@ -37,10 +60,29 @@ const HiringWorkspace: React.FC = () => {
   const recruiters = useRecruiters();
   const allCalls = useCalls();
 
+  // If hiring was created (status=ready/calling) but simulation isn't running, start it
+  useEffect(() => {
+    if (
+      hiring &&
+      (hiring.status === 'calling' || hiring.status === 'ready') &&
+      !callSimulationService.isRunning(hiring.id)
+    ) {
+      const hasPending = candidates.some(c => c.status === 'added' || c.status === 'calling');
+      if (hasPending) {
+        dispatch({ type: 'UPDATE_HIRING', payload: { id: hiring.id, updates: { status: 'calling' } } });
+        callSimulationService.start(hiring.id, state, dispatch, 350);
+      }
+    }
+  }, [hiring?.id]);
+
   if (!hiring) {
     return (
       <div className="page-content">
-        <EmptyState title="Hiring not found" description="This hiring may have been deleted." action={{ label: 'Back to Hiring', onClick: () => navigate('/hiring') }} />
+        <EmptyState
+          title="Hiring not found"
+          description="This hiring campaign may have been deleted."
+          action={{ label: 'Back to Hiring', onClick: () => navigate('/hiring') }}
+        />
       </div>
     );
   }
@@ -59,333 +101,633 @@ const HiringWorkspace: React.FC = () => {
     }
   };
 
-  // If hiring was created (status=ready/calling) but simulation isn't running, start it
-  useEffect(() => {
-    if (
-      (hiring.status === 'calling' || hiring.status === 'ready') &&
-      !callSimulationService.isRunning(hiring.id)
-    ) {
-      const hasPending = candidates.some(c => c.status === 'added' || c.status === 'calling');
-      if (hasPending) {
-        dispatch({ type: 'UPDATE_HIRING', payload: { id: hiring.id, updates: { status: 'calling' } } });
-        callSimulationService.start(hiring.id, state, dispatch, 400);
-      }
-    }
-  }, [hiring.id]);
+  const handleOpenCandidate = (cand: Candidate) => {
+    setSelectedCandidate(cand);
+    setDrawerOpen(true);
+  };
+
+  const handleCallAgain = (cand: Candidate) => {
+    setDrawerOpen(false);
+    setDialerCandidate({ phone: cand.phone, name: cand.name });
+    setDialerOpen(true);
+  };
+
+  // Bulk actions
+  const handleBulkShortlist = () => {
+    selectedIds.forEach(candId => {
+      dispatch({
+        type: 'UPDATE_CANDIDATE',
+        payload: { id: candId, updates: { status: 'shortlisted' } },
+      });
+    });
+    showToast(`${selectedIds.length} candidate(s) shortlisted`, 'success');
+    setSelectedIds([]);
+  };
+
+  const handleBulkDisqualify = () => {
+    selectedIds.forEach(candId => {
+      dispatch({
+        type: 'UPDATE_CANDIDATE',
+        payload: { id: candId, updates: { status: 'not_interested' } },
+      });
+    });
+    showToast(`${selectedIds.length} candidate(s) marked not interested`, 'info');
+    setSelectedIds([]);
+  };
+
+  const handleExportCSV = () => {
+    const exportData = candidates.filter(c => selectedIds.length === 0 || selectedIds.includes(c.id));
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      ['Name,Phone,Email,Status,Experience,Location,Call Duration,Summary']
+        .concat(
+          exportData.map(c =>
+            `"${c.name}","${c.phone}","${c.email || ''}","${c.status}","${c.experience || ''}","${c.location || ''}","${c.callDuration || ''}","${(c.aiSummary || '').replace(/"/g, '""')}"`
+          )
+        )
+        .join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${hiring.title.replace(/\s+/g, '_')}_candidates.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${exportData.length} candidates to CSV`, 'success');
+  };
+
+  // Filtering candidates
+  const filteredCandidates = candidates.filter(c => {
+    const matchesFilter =
+      candidateFilter === 'all' ||
+      c.status === candidateFilter;
+    const matchesSearch =
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.phone.includes(searchQuery) ||
+      (c.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  // Shortlisted candidates for Results tab
+  const shortlistedCandidates = candidates.filter(c => c.status === 'shortlisted');
+
+  // Candidate Table Columns
+  const candidateColumns: Column<Candidate>[] = [
+    {
+      key: 'name',
+      header: 'Candidate Name',
+      sortable: true,
+      render: (c: Candidate) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Avatar name={c.name} size="sm" color="var(--brand-primary)" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>{c.phone}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Screening Status',
+      sortable: true,
+      render: (c: Candidate) => <CandidateStatusBadge status={c.status} />,
+    },
+    {
+      key: 'experience',
+      header: 'Experience',
+      render: (c: Candidate) => c.experience || '—',
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      render: (c: Candidate) => c.location || hiring.location,
+    },
+    {
+      key: 'callDuration',
+      header: 'Call Time',
+      render: (c: Candidate) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+          {c.callDuration || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'lastActivity',
+      header: 'Last Contact',
+      render: (c: Candidate) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+          {c.lastActivity || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      align: 'right',
+      render: (c: Candidate) => (
+        <div style={{ display: 'inline-flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleOpenCandidate(c)}
+          >
+            Inspect
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Call Logs Table Columns
+  const callColumns: Column<Call>[] = [
+    {
+      key: 'candidateName',
+      header: 'Candidate',
+      render: (call: Call) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Avatar name={call.candidateName} size="sm" color="var(--brand-primary)" />
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{call.candidateName}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'outcome',
+      header: 'Outcome',
+      render: (call: Call) => <CandidateStatusBadge status={call.outcome || 'contacted'} />,
+    },
+    {
+      key: 'duration',
+      header: 'Duration',
+      render: (call: Call) => call.duration || '—',
+    },
+    {
+      key: 'timeAgo',
+      header: 'Time',
+      render: (call: Call) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+          {call.timeAgo}
+        </span>
+      ),
+    },
+    {
+      key: 'aiSummary',
+      header: 'Key Takeaway',
+      render: (call: Call) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', display: 'block', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {call.aiSummary || 'No summary available.'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      render: (call: Call) => {
+        const cand = candidates.find(c => c.id === call.candidateId);
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => cand && handleOpenCandidate(cand)}
+          >
+            Review Call
+          </Button>
+        );
+      },
+    },
+  ];
 
   const canPause = hiring.status === 'calling' || hiring.status === 'paused';
 
   return (
     <div className="page-content animate-fade-in">
-      <button className="workspace__back" onClick={() => navigate('/hiring')}>
-        <ArrowLeft size={15} /> All Hirings
+      {/* Back Button */}
+      <button
+        onClick={() => navigate('/hiring')}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-secondary)',
+          fontSize: 'var(--font-size-sm)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          marginBottom: '14px',
+          padding: 0,
+        }}
+      >
+        <ArrowLeft size={14} /> Back to All Hirings
       </button>
 
-      <div className="workspace-header">
-        <div className="workspace-header__left">
-          <div className="workspace-header__title-row">
-            <h1 className="workspace-header__title">{hiring.title}</h1>
+      {/* Operational Header */}
+      <div className="page-header" style={{ marginBottom: '18px' }}>
+        <div className="page-header__text">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1 className="page-header__title">{hiring.title}</h1>
             <HiringStatusBadge status={hiring.status} />
           </div>
-          <div className="workspace-header__meta">
-            <span className="workspace-header__meta-item"><MapPin size={13} />{hiring.location}</span>
-            <span className="workspace-header__meta-sep">·</span>
-            <span className="workspace-header__meta-item">{hiring.candidateCount} candidates</span>
-            <span className="workspace-header__meta-sep">·</span>
-            <span className="workspace-header__meta-item">
-              <Calendar size={13} />
-              Created {new Date(hiring.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          <div className="page-header__subtitle" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <MapPin size={12} /> {hiring.location}
+            </span>
+            <span>·</span>
+            <span>{hiring.candidateCount} candidate pool</span>
+            <span>·</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Calendar size={12} /> Created {new Date(hiring.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
           </div>
         </div>
 
-        {canPause && (
-          <div className="workspace-header__actions">
+        <div className="page-header__actions">
+          {canPause && (
             <Button
-              variant="secondary"
+              variant={hiring.status === 'calling' ? 'secondary' : 'primary'}
               icon={hiring.status === 'paused' ? <Play size={15} /> : <Pause size={15} />}
               onClick={handlePauseToggle}
             >
-              {hiring.status === 'paused' ? 'Resume calling' : 'Pause calling'}
+              {hiring.status === 'paused' ? 'Resume Calling' : 'Pause Calling'}
             </Button>
-            <Button variant="ghost" size="md" icon={<MoreHorizontal size={16} />} />
-          </div>
-        )}
+          )}
+          <Button
+            variant="outline"
+            icon={<Download size={14} />}
+            onClick={handleExportCSV}
+          >
+            Export Pipeline
+          </Button>
+        </div>
       </div>
 
-      <Tabs tabs={workspaceTabs} activeTab={activeTab} onChange={id => setActiveTab(id as WorkspaceTab)} />
+      {/* Campaign Velocity Metric Tiles */}
+      <div className="metrics-row">
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>SCREENING PROGRESS</span>
+          </div>
+          <div className="metric-tile__value">
+            {hiring.contacted} <span style={{ fontSize: 'var(--font-size-md)', color: 'var(--text-tertiary)', fontWeight: 500 }}>/ {hiring.candidateCount}</span>
+          </div>
+          <div style={{ marginTop: '4px' }}>
+            <ProgressBar value={hiring.contacted} total={hiring.candidateCount || 1} />
+          </div>
+        </div>
 
-      <div className="workspace-body">
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>CONNECTED RATE</span>
+          </div>
+          <div className="metric-tile__value">
+            {hiring.contacted > 0 ? Math.round((hiring.connected / hiring.contacted) * 100) : 0}%
+          </div>
+          <span className="metric-tile__sub">{hiring.connected} picked up calls</span>
+        </div>
 
-        {/* OVERVIEW */}
-        {activeTab === 'overview' && (
-          <div className="workspace-overview animate-fade-in">
-            <div className="workspace-overview__main">
-              <div className="ws-card">
-                <h3 className="ws-card__title">Campaign progress</h3>
-                <div className="ws-progress-block">
-                  <div className="ws-progress-numbers">
-                    <span className="ws-progress-primary">{hiring.contacted}</span>
-                    <span className="ws-progress-sep">/</span>
-                    <span className="ws-progress-total">{hiring.candidateCount}</span>
-                    <span className="ws-progress-label">candidates contacted</span>
-                  </div>
-                  <ProgressBar value={hiring.contacted} total={hiring.candidateCount || 1} size="md" />
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>INTERESTED</span>
+          </div>
+          <div className="metric-tile__value">{hiring.interested}</div>
+          <span className="metric-tile__sub">Wants to explore role</span>
+        </div>
+
+        <div className="metric-tile">
+          <div className="metric-tile__header">
+            <span>QUALIFIED / SHORTLISTED</span>
+          </div>
+          <div className="metric-tile__value" style={{ color: 'var(--brand-primary)' }}>
+            {hiring.shortlisted}
+          </div>
+          <span className="metric-tile__sub">Ready for interview</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ marginBottom: '18px' }}>
+        <Tabs
+          tabs={workspaceTabs.map(t => ({
+            ...t,
+            count:
+              t.id === 'candidates' ? candidates.length :
+              t.id === 'calls' ? hiringCalls.length :
+              t.id === 'results' ? shortlistedCandidates.length :
+              undefined,
+          }))}
+          activeTab={activeTab}
+          onChange={tabId => setActiveTab(tabId as WorkspaceTab)}
+        />
+      </div>
+
+      {/* TAB CONTENT: OVERVIEW */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Candidate Funnel */}
+            <div className="table-container" style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    AI Screening Funnel
+                  </h3>
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                    Real-time stage transitions from import to shortlist
+                  </p>
                 </div>
               </div>
+              <CandidateFunnel hiring={hiring} />
+            </div>
 
-              <div className="ws-card">
-                <h3 className="ws-card__title">Candidate funnel</h3>
-                <CandidateFunnel hiring={hiring} />
+            {/* Campaign Recent Activity */}
+            <div className="table-container">
+              <div className="table-toolbar">
+                <span style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Screening Event Stream
+                </span>
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                  {hiringActivity.length} recent events
+                </span>
               </div>
-
-              <div className="ws-card">
-                <h3 className="ws-card__title">Recent activity</h3>
-                {hiringActivity.length > 0 ? (
+              <div style={{ padding: '8px 16px' }}>
+                {hiringActivity.length === 0 ? (
+                  <p style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)' }}>
+                    Activity will appear as soon as the AI Recruiter connects with candidates.
+                  </p>
+                ) : (
                   hiringActivity.slice(0, 8).map(item => (
                     <ActivityItemComponent key={item.id} item={item} />
                   ))
-                ) : (
-                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>
-                    Activity will appear here once calling starts.
-                  </p>
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="workspace-overview__sidebar">
-              <div className="ws-card">
-                <h3 className="ws-card__title">AI Recruiter</h3>
-                {recruiter ? (
-                  <div className="ws-recruiter">
-                    <Avatar name={recruiter.name} size="md" color={recruiter.avatarColor} />
-                    <div className="ws-recruiter__info">
-                      <span className="ws-recruiter__name">{recruiter.name}</span>
-                      <span className="ws-recruiter__langs">{recruiter.languages.join(' + ')}</span>
+          {/* AI Recruiter Persona Scorecard */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="table-container" style={{ padding: '20px' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Assigned AI Recruiter
+              </span>
+              {recruiter ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Avatar name={recruiter.name} size="lg" color={recruiter.avatarColor} />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: 'var(--font-size-md)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {recruiter.name}
+                      </span>
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                        {recruiter.conversationStyle} · {recruiter.voice}
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  <span className="ws-no-recruiter">Not configured</span>
-                )}
-              </div>
 
-              <div className="ws-card">
-                <h3 className="ws-card__title">At a glance</h3>
-                <div className="ws-quick-stats">
-                  {[
-                    { label: 'Total candidates', value: hiring.candidateCount },
-                    { label: 'Contacted', value: hiring.contacted },
-                    { label: 'Connected', value: hiring.connected },
-                    { label: 'Interested', value: hiring.interested },
-                    { label: 'Shortlisted', value: hiring.shortlisted },
-                    { label: 'Pending', value: hiring.candidateCount - hiring.contacted },
-                  ].map(s => (
-                    <div key={s.label} className="ws-quick-stat">
-                      <span className="ws-quick-stat__label">{s.label}</span>
-                      <span className="ws-quick-stat__value">{s.value}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                    <div>
+                      <strong style={{ color: 'var(--text-primary)' }}>Languages:</strong> {recruiter.languages.join(', ')}
                     </div>
-                  ))}
+                    {hiring.interviewInstructions && (
+                      <div style={{ marginTop: '6px', padding: '10px 12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', fontSize: 'var(--font-size-xs)', lineHeight: 1.5 }}>
+                        <strong style={{ display: 'block', marginBottom: '3px', color: 'var(--text-primary)' }}>Screening Instructions:</strong>
+                        {hiring.interviewInstructions}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CANDIDATES */}
-        {activeTab === 'candidates' && (
-          <div className="animate-fade-in ws-table-section">
-            <div className="ws-table-header">
-              <span className="ws-table-count">{candidates.length} candidates</span>
-            </div>
-            {candidates.length === 0 ? (
-              <EmptyState title="No candidates" description="Import candidates to get started." />
-            ) : (
-              <div className="ws-table-wrap">
-                <table className="ws-table">
-                  <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Experience</th><th>Last activity</th></tr></thead>
-                  <tbody>
-                    {candidates.map(c => (
-                      <tr key={c.id} onClick={() => navigate(`/candidates/${c.id}`)} className="clickable-row">
-                        <td>
-                          <div className="table-name-cell">
-                            <Avatar name={c.name} size="sm" color="var(--brand-primary)" />
-                            <span className="table-name">{c.name}</span>
-                          </div>
-                        </td>
-                        <td className="table-secondary">{c.phone}</td>
-                        <td><CandidateStatusBadge status={c.status} /></td>
-                        <td className="table-secondary">{c.experience || '—'}</td>
-                        <td className="table-secondary">{c.lastActivity || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* CALLS */}
-        {activeTab === 'calls' && (
-          <div className="animate-fade-in ws-table-section">
-            <div className="ws-table-header">
-              <span className="ws-table-count">{hiringCalls.length} calls made</span>
-            </div>
-            {hiringCalls.length === 0 ? (
-              <EmptyState
-                icon={<Phone size={22} />}
-                title="No calls yet"
-                description="Calls will appear here once your AI Recruiter starts contacting candidates."
-              />
-            ) : (
-              <div className="ws-table-wrap">
-                <table className="ws-table">
-                  <thead><tr><th>Candidate</th><th>Time</th><th>Duration</th><th>Outcome</th></tr></thead>
-                  <tbody>
-                    {hiringCalls.map(call => (
-                      <tr key={call.id} onClick={() => navigate(`/candidates/${call.candidateId}`)} className="clickable-row">
-                        <td>
-                          <div className="table-name-cell">
-                            <Avatar name={call.candidateName} size="sm" color="var(--brand-primary)" />
-                            <span className="table-name">{call.candidateName}</span>
-                          </div>
-                        </td>
-                        <td className="table-secondary">{call.timeAgo}</td>
-                        <td className="table-secondary">{call.duration || '—'}</td>
-                        <td><CandidateStatusBadge status={call.outcome || 'contacted'} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* RESULTS */}
-        {activeTab === 'results' && (
-          <div className="animate-fade-in ws-results">
-            <div className="ws-results-grid">
-              <div className="ws-card ws-results-card ws-results-card--shortlisted">
-                <div className="ws-results-card__number">{hiring.shortlisted}</div>
-                <div className="ws-results-card__label">Shortlisted</div>
-              </div>
-              <div className="ws-card ws-results-card ws-results-card--interested">
-                <div className="ws-results-card__number">{hiring.interested}</div>
-                <div className="ws-results-card__label">Interested</div>
-              </div>
-              <div className="ws-card ws-results-card ws-results-card--connected">
-                <div className="ws-results-card__number">{hiring.connected}</div>
-                <div className="ws-results-card__label">Connected</div>
-              </div>
-              <div className="ws-card ws-results-card ws-results-card--pending">
-                <div className="ws-results-card__number">{hiring.candidateCount - hiring.contacted}</div>
-                <div className="ws-results-card__label">Pending</div>
-              </div>
-            </div>
-
-            <div className="ws-card">
-              <h3 className="ws-card__title">Shortlisted candidates</h3>
-              {candidates.filter(c => c.status === 'shortlisted').length === 0 ? (
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>
-                  No shortlisted candidates yet.
-                </p>
               ) : (
-                <div className="ws-table-wrap" style={{ margin: 0 }}>
-                  <table className="ws-table">
-                    <thead><tr><th>Name</th><th>Duration</th><th>AI Summary</th></tr></thead>
-                    <tbody>
-                      {candidates.filter(c => c.status === 'shortlisted').map(c => (
-                        <tr key={c.id} onClick={() => navigate(`/candidates/${c.id}`)} className="clickable-row">
-                          <td>
-                            <div className="table-name-cell">
-                              <Avatar name={c.name} size="sm" color="var(--brand-primary)" />
-                              <span className="table-name">{c.name}</span>
-                            </div>
-                          </td>
-                          <td className="table-secondary">{c.callDuration || '—'}</td>
-                          <td>
-                            <span className="ws-summary-preview">
-                              {c.aiSummary ? c.aiSummary.slice(0, 90) + '…' : '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <p style={{ marginTop: '8px', color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)' }}>
+                  Standard SoloBuildAI screening persona.
+                </p>
               )}
             </div>
+
+            {/* Quick Actions Card */}
+            <div className="table-container" style={{ padding: '20px' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Recruiter Actions
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                  icon={<Phone size={14} />}
+                  onClick={() => {
+                    setDialerCandidate(null);
+                    setDialerOpen(true);
+                  }}
+                >
+                  Dial Specific Candidate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  icon={<Sparkles size={14} />}
+                  onClick={() => setActiveTab('results')}
+                >
+                  Review Shortlist ({hiring.shortlisted})
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: CANDIDATES */}
+      {activeTab === 'candidates' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Filter Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <Filter size={13} /> Filter:
+            </div>
+            {['all', 'shortlisted', 'interested', 'connected', 'no_answer', 'added'].map(filterKey => (
+              <button
+                key={filterKey}
+                onClick={() => setCandidateFilter(filterKey)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: candidateFilter === filterKey ? 'var(--brand-primary)' : 'var(--border-default)',
+                  background: candidateFilter === filterKey ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                  color: candidateFilter === filterKey ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {filterKey === 'added' ? 'Queued' : filterKey.replace('_', ' ')}
+                {filterKey === 'all'
+                  ? ` (${candidates.length})`
+                  : ` (${candidates.filter(c => c.status === filterKey).length})`}
+              </button>
+            ))}
+          </div>
+
+          <DataTable
+            columns={candidateColumns}
+            data={filteredCandidates}
+            selectable
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            search={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search candidates by name, phone, or email…"
+            onRowClick={handleOpenCandidate}
+            batchActions={() => (
+              <>
+                <Button variant="secondary" size="sm" icon={<CheckCircle2 size={13} />} onClick={handleBulkShortlist}>
+                  Bulk Shortlist
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleBulkDisqualify}>
+                  Disqualify
+                </Button>
+                <Button variant="outline" size="sm" icon={<Download size={13} />} onClick={handleExportCSV}>
+                  Export CSV
+                </Button>
+              </>
+            )}
+            emptyTitle="No candidates match your filter"
+            emptyDescription="Try selecting a different status filter or clear your search."
+          />
+        </div>
+      )}
+
+      {/* TAB CONTENT: CALL LOGS */}
+      {activeTab === 'calls' && (
+        <DataTable
+          columns={callColumns}
+          data={hiringCalls}
+          emptyTitle="No calls logged yet"
+          emptyDescription="Once the AI Recruiter begins contacting candidates, call durations and summaries will be recorded here."
+          onRowClick={call => {
+            const cand = candidates.find(c => c.id === call.candidateId);
+            if (cand) handleOpenCandidate(cand);
+          }}
+        />
+      )}
+
+      {/* TAB CONTENT: SHORTLIST & RESULTS */}
+      {activeTab === 'results' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div
+            style={{
+              padding: '16px 20px',
+              background: 'var(--brand-primary-light)',
+              border: '1px solid var(--brand-primary-border)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+            }}
+          >
+            <div>
+              <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 700, color: 'var(--brand-primary-text)' }}>
+                Candidate Shortlist & Hiring Decisions
+              </h3>
+              <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                {shortlistedCandidates.length} candidate(s) met all role criteria during autonomous AI voice screening.
+              </p>
+            </div>
+            {shortlistedCandidates.length > 0 && (
+              <Button variant="primary" size="sm" icon={<Download size={14} />} onClick={handleExportCSV}>
+                Export Shortlist to CSV
+              </Button>
+            )}
+          </div>
+
+          {shortlistedCandidates.length === 0 ? (
+            <EmptyState
+              icon={<Sparkles size={24} />}
+              title="No candidates shortlisted yet"
+              description="As the AI Recruiter screens the candidate pool, those who meet your criteria will be populated here."
+            />
+          ) : (
+            <DataTable
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Shortlisted Candidate',
+                  render: (c: Candidate) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Avatar name={c.name} size="sm" color="var(--brand-primary)" />
+                      <div>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>{c.name}</span>
+                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>{c.phone}</span>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'experience',
+                  header: 'Experience',
+                  render: (c: Candidate) => c.experience || '—',
+                },
+                {
+                  key: 'aiSummary',
+                  header: 'AI Screening Takeaway',
+                  render: (c: Candidate) => (
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block', maxWidth: '400px' }}>
+                      {c.aiSummary || 'Qualified candidate.'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'actions',
+                  header: 'Decisions',
+                  align: 'right',
+                  render: (c: Candidate) => (
+                    <div style={{ display: 'inline-flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleOpenCandidate(c)}
+                      >
+                        Inspect
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => showToast(`Interview invite queued for ${c.name}`, 'success')}
+                      >
+                        Schedule
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+              data={shortlistedCandidates}
+              onRowClick={handleOpenCandidate}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Candidate Evaluation Drawer */}
+      <CandidateDrawer
+        candidate={selectedCandidate}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onCallAgain={handleCallAgain}
+      />
+
+      {/* Dialer Modal */}
+      <DialerModal
+        open={dialerOpen}
+        initialPhone={dialerCandidate?.phone}
+        initialCandidateName={dialerCandidate?.name}
+        onClose={() => {
+          setDialerOpen(false);
+          setDialerCandidate(null);
+        }}
+      />
     </div>
   );
 };
 
 export default HiringWorkspace;
-
-const style = document.createElement('style');
-style.textContent = `
-.workspace__back { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-size-sm); font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer; margin-bottom: 20px; transition: color var(--transition-fast); padding: 0; }
-.workspace__back:hover { color: var(--text-primary); }
-.workspace-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-.workspace-header__left { display: flex; flex-direction: column; gap: 8px; }
-.workspace-header__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.workspace-header__title { font-size: var(--font-size-4xl); font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.1; }
-.workspace-header__meta { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: var(--font-size-sm); flex-wrap: wrap; }
-.workspace-header__meta-item { display: flex; align-items: center; gap: 4px; }
-.workspace-header__meta-sep { color: var(--text-tertiary); }
-.workspace-header__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.workspace-body { margin-top: 24px; }
-.workspace-overview { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
-.workspace-overview__main { display: flex; flex-direction: column; gap: 16px; }
-.workspace-overview__sidebar { display: flex; flex-direction: column; gap: 16px; }
-.ws-card { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.ws-card__title { font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary); }
-.ws-progress-block { display: flex; flex-direction: column; gap: 10px; }
-.ws-progress-numbers { display: flex; align-items: baseline; gap: 4px; }
-.ws-progress-primary { font-size: 40px; font-weight: 800; color: var(--text-primary); letter-spacing: -1px; }
-.ws-progress-sep { font-size: var(--font-size-2xl); color: var(--text-tertiary); margin: 0 2px; }
-.ws-progress-total { font-size: var(--font-size-2xl); font-weight: 600; color: var(--text-secondary); }
-.ws-progress-label { font-size: var(--font-size-sm); color: var(--text-secondary); margin-left: 8px; }
-.ws-recruiter { display: flex; align-items: center; gap: 12px; }
-.ws-recruiter__info { display: flex; flex-direction: column; gap: 2px; }
-.ws-recruiter__name { font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary); }
-.ws-recruiter__langs { font-size: var(--font-size-xs); color: var(--text-secondary); }
-.ws-no-recruiter { font-size: var(--font-size-sm); color: var(--text-tertiary); }
-.ws-quick-stats { display: flex; flex-direction: column; }
-.ws-quick-stat { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-default); }
-.ws-quick-stat:last-child { border-bottom: none; }
-.ws-quick-stat__label { font-size: var(--font-size-sm); color: var(--text-secondary); }
-.ws-quick-stat__value { font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary); }
-.ws-table-section { display: flex; flex-direction: column; gap: 14px; }
-.ws-table-header { display: flex; align-items: center; justify-content: space-between; }
-.ws-table-count { font-size: var(--font-size-sm); color: var(--text-secondary); font-weight: 500; }
-.ws-table-wrap { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; overflow-x: auto; }
-.ws-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
-.ws-table th { padding: 11px 16px; text-align: left; font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-subtle); border-bottom: 1px solid var(--border-default); white-space: nowrap; }
-.ws-table td { padding: 13px 16px; border-bottom: 1px solid var(--border-default); vertical-align: middle; }
-.ws-table tr:last-child td { border-bottom: none; }
-.clickable-row { cursor: pointer; }
-.clickable-row:hover td { background: var(--bg-hover); }
-.table-name-cell { display: flex; align-items: center; gap: 10px; }
-.table-name { font-weight: 500; color: var(--text-primary); }
-.table-secondary { color: var(--text-secondary); }
-.ws-summary-preview { font-size: var(--font-size-xs); color: var(--text-secondary); max-width: 300px; display: block; line-height: 1.4; }
-.ws-results { display: flex; flex-direction: column; gap: 20px; }
-.ws-results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.ws-results-card { align-items: center; text-align: center; padding: 28px 16px; }
-.ws-results-card__number { font-size: 44px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
-.ws-results-card__label { font-size: var(--font-size-sm); font-weight: 500; color: var(--text-secondary); margin-top: 4px; }
-.ws-results-card--shortlisted .ws-results-card__number { color: #16a34a; }
-.ws-results-card--interested .ws-results-card__number { color: #2563eb; }
-.ws-results-card--connected .ws-results-card__number { color: #0891b2; }
-.ws-results-card--pending .ws-results-card__number { color: var(--text-secondary); }
-@media (max-width: 1100px) { .workspace-overview { grid-template-columns: 1fr; } .ws-results-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) { .workspace-header__title { font-size: var(--font-size-3xl); } .ws-results-grid { grid-template-columns: repeat(2, 1fr); } }
-`;
-if (typeof document !== 'undefined' && !document.getElementById('workspace-styles')) {
-  style.id = 'workspace-styles';
-  document.head.appendChild(style);
-}

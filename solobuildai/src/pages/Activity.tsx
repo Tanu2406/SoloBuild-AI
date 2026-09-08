@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Activity as ActivityIcon } from 'lucide-react';
+import { Activity as ActivityIcon, Search } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Tabs } from '../components/ui/Tabs';
-import { ActivityItemComponent } from '../components/product/ActivityItem';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { useActivity } from '../store/appStore';
-import type { ActivityType } from '../types';
+import { CandidateDrawer } from '../components/product/CandidateDrawer';
+import { DialerModal } from '../components/product/DialerModal';
+import { useActivity, useCandidates } from '../store/appStore';
+import type { ActivityType, Candidate } from '../types';
 
 type ActivityFilter = 'all' | 'calls' | 'direct' | 'hiring';
 
 const activityTabs = [
-  { id: 'all', label: 'All activity' },
+  { id: 'all', label: 'All Operations' },
   { id: 'calls', label: 'Hiring Calls' },
   { id: 'direct', label: 'Direct Calls' },
-  { id: 'hiring', label: 'Hiring Events' },
+  { id: 'hiring', label: 'Campaign Events' },
 ];
 
 const hiringCallTypes: ActivityType[] = [
@@ -30,72 +33,242 @@ const hiringEventTypes: ActivityType[] = [
   'hiring_resumed', 'hiring_completed',
 ];
 
-const Activity: React.FC = () => {
+const ActivityPage: React.FC = () => {
   const activity = useActivity();
+  const candidates = useCandidates();
+
   const [filter, setFilter] = useState<ActivityFilter>('all');
+  const [search, setSearch] = useState('');
+
+  // Drawer and dialer states
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialerOpen, setDialerOpen] = useState(false);
+  const [dialerCandidate, setDialerCandidate] = useState<{ phone: string; name?: string } | null>(null);
+
+  const handleInspectCandidate = (cand: Candidate) => {
+    setSelectedCandidate(cand);
+    setDrawerOpen(true);
+  };
+
+  const handleCallAgain = (cand: Candidate) => {
+    setDrawerOpen(false);
+    setDialerCandidate({ phone: cand.phone, name: cand.name });
+    setDialerOpen(true);
+  };
 
   const filtered = activity.filter(item => {
-    if (filter === 'calls') return hiringCallTypes.includes(item.type);
-    if (filter === 'direct') return directCallTypes.includes(item.type);
-    if (filter === 'hiring') return hiringEventTypes.includes(item.type);
-    return true;
+    const matchesFilter =
+      filter === 'calls' ? hiringCallTypes.includes(item.type) :
+      filter === 'direct' ? directCallTypes.includes(item.type) :
+      filter === 'hiring' ? hiringEventTypes.includes(item.type) :
+      true;
+
+    const matchesSearch =
+      (item.candidateName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.hiringTitle || '').toLowerCase().includes(search.toLowerCase()) ||
+      item.description.toLowerCase().includes(search.toLowerCase());
+
+    return matchesFilter && matchesSearch;
   });
 
   const tabsWithCount = activityTabs.map(t => ({
     ...t,
     count:
-      t.id === 'all' ? activity.length
-      : t.id === 'calls' ? activity.filter(a => hiringCallTypes.includes(a.type)).length
-      : t.id === 'direct' ? activity.filter(a => directCallTypes.includes(a.type)).length
-      : activity.filter(a => hiringEventTypes.includes(a.type)).length,
+      t.id === 'all' ? activity.length :
+      t.id === 'calls' ? activity.filter(a => hiringCallTypes.includes(a.type)).length :
+      t.id === 'direct' ? activity.filter(a => directCallTypes.includes(a.type)).length :
+      activity.filter(a => hiringEventTypes.includes(a.type)).length,
   }));
+
+  const getEventBadge = (type: ActivityType) => {
+    if (type === 'candidate_shortlisted') {
+      return { label: 'Shortlisted', bg: 'var(--status-success-bg)', text: 'var(--status-success-text)' };
+    }
+    if (type === 'candidate_interested') {
+      return { label: 'Interested', bg: 'var(--status-success-bg)', text: 'var(--status-success-text)' };
+    }
+    if (type === 'call_completed' || type === 'direct_call_completed') {
+      return { label: 'Call Finished', bg: 'var(--brand-primary-light)', text: 'var(--brand-primary-text)' };
+    }
+    if (type === 'call_no_answer' || type === 'direct_call_no_answer') {
+      return { label: 'No Answer', bg: 'var(--status-warning-bg)', text: 'var(--status-warning-text)' };
+    }
+    if (type === 'call_failed' || type === 'direct_call_failed') {
+      return { label: 'Failed', bg: 'var(--status-error-bg)', text: 'var(--status-error-text)' };
+    }
+    return { label: 'Campaign Event', bg: 'var(--bg-subtle)', text: 'var(--text-secondary)' };
+  };
 
   return (
     <div className="page-content animate-fade-in">
       <PageHeader
-        title="Activity"
-        subtitle="Everything happening across your hirings and calls."
+        title="Screening Operations & Audit Log"
+        subtitle="Chronological audit history of autonomous AI calls, candidate evaluations, and campaign events."
       />
 
-      <div className="activity-filter">
+      {/* Toolbar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          marginBottom: '18px',
+          flexWrap: 'wrap',
+        }}
+      >
         <Tabs tabs={tabsWithCount} activeTab={filter} onChange={id => setFilter(id as ActivityFilter)} />
+
+        <div style={{ maxWidth: '280px', width: '100%' }}>
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search events, candidates, roles…"
+            leftIcon={<Search size={14} />}
+          />
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<ActivityIcon size={24} />}
-          title={filter === 'direct' ? 'No direct calls yet' : 'No activity yet'}
-          description={
-            filter === 'direct'
-              ? 'Use "Dial a Number" from the home screen to make a direct call.'
-              : 'Activity will appear here once you start a hiring and calls begin.'
-          }
-        />
-      ) : (
-        <div className="activity-feed">
-          {filtered.map(item => (
-            <ActivityItemComponent key={item.id} item={item} />
-          ))}
+      {/* Activity Log Table */}
+      <div className="table-container">
+        <div className="table-toolbar">
+          <div className="table-toolbar__left">
+            <span style={{ fontSize: 'var(--font-size-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Operational Event Records
+            </span>
+            <span
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--text-secondary)',
+                background: 'var(--bg-subtle)',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 500,
+              }}
+            >
+              {filtered.length} event{filtered.length === 1 ? '' : 's'}
+            </span>
+          </div>
         </div>
-      )}
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '40px 16px' }}>
+            <EmptyState
+              icon={<ActivityIcon size={24} />}
+              title={search ? 'No matching activity' : 'No operational activity yet'}
+              description={
+                search
+                  ? 'Try clearing your search query.'
+                  : 'Activity events will automatically be recorded as calls and screening campaigns progress.'
+              }
+            />
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Event Type</th>
+                  <th>Candidate / Subject</th>
+                  <th>Campaign Role</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(item => {
+                  const badge = getEventBadge(item.type);
+                  const matchedCandidate = item.candidateName
+                    ? candidates.find(c => c.name.toLowerCase() === item.candidateName?.toLowerCase())
+                    : null;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => matchedCandidate && handleInspectCandidate(matchedCandidate)}
+                      style={{ cursor: matchedCandidate ? 'pointer' : 'default' }}
+                    >
+                      <td>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: badge.bg,
+                            color: badge.text,
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {item.candidateName || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                          {item.hiringTitle || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                          {item.description}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                          {item.timeAgo}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {matchedCandidate && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleInspectCandidate(matchedCandidate);
+                            }}
+                          >
+                            Inspect
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Candidate Evaluation Drawer */}
+      <CandidateDrawer
+        candidate={selectedCandidate}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onCallAgain={handleCallAgain}
+      />
+
+      {/* Dialer Modal */}
+      <DialerModal
+        open={dialerOpen}
+        initialPhone={dialerCandidate?.phone}
+        initialCandidateName={dialerCandidate?.name}
+        onClose={() => {
+          setDialerOpen(false);
+          setDialerCandidate(null);
+        }}
+      />
     </div>
   );
 };
 
-export default Activity;
-
-const style = document.createElement('style');
-style.textContent = `
-.activity-filter { margin-bottom: 20px; }
-.activity-feed {
-  background: var(--bg-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: 4px 24px 12px;
-  max-width: 720px;
-}
-`;
-if (typeof document !== 'undefined' && !document.getElementById('activity-page-styles')) {
-  style.id = 'activity-page-styles';
-  document.head.appendChild(style);
-}
+export default ActivityPage;

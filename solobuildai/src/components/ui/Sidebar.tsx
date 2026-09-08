@@ -10,6 +10,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { useHirings, useCandidates } from '../../store/appStore';
 
 interface NavItem {
   path: string;
@@ -31,6 +32,11 @@ const bottomItems: NavItem[] = [
 
 export const Sidebar: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hirings = useHirings();
+  const candidates = useCandidates();
+
+  const isCalling = hirings.some(h => h.status === 'calling');
+  const candidateCount = candidates.length;
 
   return (
     <>
@@ -75,20 +81,51 @@ export const Sidebar: React.FC = () => {
 
         <nav className="sidebar__nav" aria-label="Main navigation">
           <div className="sidebar__section">
-            {navItems.map(item => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === '/'}
-                className={({ isActive }) =>
-                  `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`
-                }
-                onClick={() => setMobileOpen(false)}
-              >
-                <span className="sidebar__item-icon">{item.icon}</span>
-                <span className="sidebar__item-label">{item.label}</span>
-              </NavLink>
-            ))}
+            {navItems.map(item => {
+              const showCallingBadge = item.path === '/hiring' && isCalling;
+              const showCandidateCount = item.path === '/candidates' && candidateCount > 0;
+
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive }) =>
+                    `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`
+                  }
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <span className="sidebar__item-icon">{item.icon}</span>
+                  <span className="sidebar__item-label">{item.label}</span>
+                  {showCallingBadge && (
+                    <span
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: 'var(--status-success-dot)',
+                        animation: 'pulse 1.5s infinite',
+                      }}
+                      title="AI Screening active"
+                    />
+                  )}
+                  {showCandidateCount && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-tertiary)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {candidateCount}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
           </div>
         </nav>
 

@@ -251,28 +251,3 @@ const AIRecruiters: React.FC = () => {
 
 export default AIRecruiters;
 
-const style = document.createElement('style');
-style.textContent = `
-.recruiters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
-.recruiter-detail-card { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 20px; transition: box-shadow var(--transition-fast); }
-.recruiter-detail-card:hover { box-shadow: var(--shadow-sm); }
-.rdc__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.rdc__identity { display: flex; align-items: center; gap: 14px; flex: 1; }
-.rdc__info { display: flex; flex-direction: column; gap: 4px; }
-.rdc__name { font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); }
-.rdc__desc { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.4; }
-.rdc__actions { display: flex; gap: 4px; }
-.rdc__attrs { display: flex; gap: 24px; flex-wrap: wrap; padding: 16px; background: var(--bg-subtle); border-radius: var(--radius-md); }
-.rdc__attr { display: flex; flex-direction: column; gap: 3px; }
-.rdc__attr-label { font-size: var(--font-size-xs); font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
-.rdc__attr-value { font-size: var(--font-size-sm); font-weight: 500; color: var(--text-primary); }
-.rdc__instructions { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border-default); }
-.rdc__instructions-label { font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-.rdc__instructions-text { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.6; }
-.recruiter-form { display: flex; flex-direction: column; gap: 18px; }
-@media (max-width: 640px) { .recruiters-grid { grid-template-columns: 1fr; } }
-`;
-if (typeof document !== 'undefined' && !document.getElementById('recruiters-page-styles')) {
-  style.id = 'recruiters-page-styles';
-  document.head.appendChild(style);
-}

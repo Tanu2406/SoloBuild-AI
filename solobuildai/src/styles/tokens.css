@@ -5,91 +5,105 @@
    ============================================================ */
 
 :root {
-  /* Brand */
-  --brand-primary: #2563eb;
-  --brand-primary-hover: #1d4ed8;
+  /* Brand Master — SoloBuildAI Royal Blue */
+  --brand-primary: #1d4ed8;
+  --brand-primary-hover: #1e40af;
   --brand-primary-light: #eff6ff;
-  --brand-primary-text: #1e40af;
+  --brand-primary-subtle: #dbeafe;
+  --brand-primary-text: #1d4ed8;
+  --brand-primary-border: #bfdbfe;
 
-  /* Backgrounds */
+  /* Surfaces & Backgrounds */
   --bg-app: #f8fafc;
   --bg-white: #ffffff;
   --bg-subtle: #f1f5f9;
-  --bg-hover: #f8fafc;
+  --bg-muted: #e2e8f0;
+  --bg-hover: #f1f5f9;
+  --bg-active: #e2e8f0;
 
-  /* Text */
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
+  /* Text & Content */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
   --text-inverse: #ffffff;
 
-  /* Borders */
-  --border-default: #e5e7eb;
-  --border-strong: #d1d5db;
+  /* Enterprise Borders */
+  --border-subtle: #f1f5f9;
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
   --border-focus: var(--brand-primary);
 
-  /* Status */
-  --status-success-bg: #f0fdf4;
-  --status-success-text: #15803d;
-  --status-success-border: #bbf7d0;
+  /* Status Colors */
+  --status-success-bg: #ecfdf5;
+  --status-success-text: #047857;
+  --status-success-border: #a7f3d0;
+  --status-success-dot: #10b981;
 
   --status-warning-bg: #fffbeb;
   --status-warning-text: #b45309;
   --status-warning-border: #fde68a;
+  --status-warning-dot: #f59e0b;
 
   --status-error-bg: #fef2f2;
   --status-error-text: #b91c1c;
   --status-error-border: #fecaca;
+  --status-error-dot: #ef4444;
 
-  --status-info-bg: var(--brand-primary-light);
-  --status-info-text: var(--brand-primary-text);
+  --status-info-bg: #eff6ff;
+  --status-info-text: #1d4ed8;
   --status-info-border: #bfdbfe;
+  --status-info-dot: #3b82f6;
 
-  --status-neutral-bg: #f9fafb;
-  --status-neutral-text: #374151;
-  --status-neutral-border: var(--border-default);
+  --status-neutral-bg: #f8fafc;
+  --status-neutral-text: #334155;
+  --status-neutral-border: #e2e8f0;
+  --status-neutral-dot: #94a3b8;
 
   /* Sidebar */
-  --sidebar-width: 232px;
+  --sidebar-width: 240px;
   --sidebar-bg: #ffffff;
-  --sidebar-border: var(--border-default);
-  --sidebar-item-active-bg: var(--brand-primary-light);
-  --sidebar-item-active-text: var(--brand-primary);
-  --sidebar-item-hover-bg: #f9fafb;
-  --sidebar-item-text: #374151;
+  --sidebar-border: #e2e8f0;
+  --sidebar-item-active-bg: #eff6ff;
+  --sidebar-item-active-text: #1d4ed8;
+  --sidebar-item-hover-bg: #f8fafc;
+  --sidebar-item-text: #334155;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  /* Shadows - subtle & crisp */
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.04);
+  --shadow-drawer: -4px 0 24px -4px rgb(15 23 42 / 0.12);
 
   /* Radius */
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-full: 9999px;
 
   /* Spacing */
-  --content-padding: 40px;
-  --content-padding-sm: 24px;
+  --content-padding: 32px;
+  --content-padding-sm: 20px;
 
   /* Transitions */
-  --transition-fast: 120ms ease;
-  --transition-base: 180ms ease;
-  --transition-slow: 300ms ease;
+  --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-base: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 260ms cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-size-xs: 12px;
-  --font-size-sm: 13px;
-  --font-size-base: 14px;
-  --font-size-md: 15px;
-  --font-size-lg: 16px;
-  --font-size-xl: 18px;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-2xs: 10px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 15px;
+  --font-size-xl: 17px;
   --font-size-2xl: 20px;
   --font-size-3xl: 24px;
-  --font-size-4xl: 30px;
-  --font-size-5xl: 36px;
+  --font-size-4xl: 28px;
+  --font-size-5xl: 32px;
 }

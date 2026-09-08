@@ -1,147 +1,331 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Users } from 'lucide-react';
+import {
+  Users, Download, CheckCircle2,
+  Filter
+} from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
-import { Input } from '../components/ui/Input';
-import { Tabs } from '../components/ui/Tabs';
+import { Button } from '../components/ui/Button';
 import { CandidateStatusBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
-import { EmptyState } from '../components/ui/EmptyState';
-import { useCandidates } from '../store/appStore';
-import type { CandidateStatus } from '../types';
-
-type FilterTab = 'all' | CandidateStatus;
-
-const filterTabs = [
-  { id: 'all', label: 'All' },
-  { id: 'interested', label: 'Interested' },
-  { id: 'shortlisted', label: 'Shortlisted' },
-  { id: 'contacted', label: 'Contacted' },
-  { id: 'no_answer', label: 'No Answer' },
-];
+import { DataTable, type Column } from '../components/ui/DataTable';
+import { CandidateDrawer } from '../components/product/CandidateDrawer';
+import { DialerModal } from '../components/product/DialerModal';
+import { useAppStore, useCandidates, useHirings } from '../store/appStore';
+import { useToast } from '../components/ui/Toast';
+import type { Candidate } from '../types';
 
 const Candidates: React.FC = () => {
-  const navigate = useNavigate();
+  const { dispatch } = useAppStore();
+  const { showToast } = useToast();
   const candidates = useCandidates();
-  const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const hirings = useHirings();
 
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [selectedHiringId, setSelectedHiringId] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Drawer & Dialer states
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialerOpen, setDialerOpen] = useState(false);
+  const [dialerCandidate, setDialerCandidate] = useState<{ phone: string; name?: string } | null>(null);
+
+  const handleOpenCandidate = (cand: Candidate) => {
+    setSelectedCandidate(cand);
+    setDrawerOpen(true);
+  };
+
+  const handleCallAgain = (cand: Candidate) => {
+    setDrawerOpen(false);
+    setDialerCandidate({ phone: cand.phone, name: cand.name });
+    setDialerOpen(true);
+  };
+
+  // Bulk actions
+  const handleBulkShortlist = () => {
+    selectedIds.forEach(id => {
+      dispatch({
+        type: 'UPDATE_CANDIDATE',
+        payload: { id, updates: { status: 'shortlisted' } },
+      });
+    });
+    showToast(`${selectedIds.length} candidate(s) shortlisted`, 'success');
+    setSelectedIds([]);
+  };
+
+  const handleBulkDisqualify = () => {
+    selectedIds.forEach(id => {
+      dispatch({
+        type: 'UPDATE_CANDIDATE',
+        payload: { id, updates: { status: 'not_interested' } },
+      });
+    });
+    showToast(`${selectedIds.length} candidate(s) marked not interested`, 'info');
+    setSelectedIds([]);
+  };
+
+  const handleExportCSV = () => {
+    const exportData = candidates.filter(c => selectedIds.length === 0 || selectedIds.includes(c.id));
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      ['Name,Phone,Email,Role,Status,Experience,Location,Call Duration,Summary']
+        .concat(
+          exportData.map(c =>
+            `"${c.name}","${c.phone}","${c.email || ''}","${c.hiringTitle || ''}","${c.status}","${c.experience || ''}","${c.location || ''}","${c.callDuration || ''}","${(c.aiSummary || '').replace(/"/g, '""')}"`
+          )
+        )
+        .join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `SoloBuildAI_Candidates_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${exportData.length} candidates to CSV`, 'success');
+  };
+
+  // Filtering
   const filtered = candidates.filter(c => {
-    const matchFilter = activeFilter === 'all' || c.status === activeFilter;
-    const matchSearch =
+    const matchesStatus =
+      activeFilter === 'all' ||
+      c.status === activeFilter;
+    const matchesHiring =
+      selectedHiringId === 'all' ||
+      c.hiringId === selectedHiringId;
+    const matchesSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.hiringTitle || '').toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search);
-    return matchFilter && matchSearch;
+      c.phone.includes(search) ||
+      (c.email || '').toLowerCase().includes(search.toLowerCase());
+    return matchesStatus && matchesHiring && matchesSearch;
   });
 
-  const tabsWithCount = filterTabs.map(t => ({
-    ...t,
-    count: t.id === 'all'
-      ? candidates.length
-      : candidates.filter(c => c.status === t.id).length,
-  }));
+  const columns: Column<Candidate>[] = [
+    {
+      key: 'name',
+      header: 'Candidate Name',
+      sortable: true,
+      render: (c: Candidate) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Avatar name={c.name} size="sm" color="var(--brand-primary)" />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>{c.phone}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'hiringTitle',
+      header: 'Campaign / Role',
+      sortable: true,
+      render: (c: Candidate) => (
+        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+          {c.hiringTitle || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Screening Status',
+      sortable: true,
+      render: (c: Candidate) => <CandidateStatusBadge status={c.status} />,
+    },
+    {
+      key: 'experience',
+      header: 'Experience',
+      render: (c: Candidate) => c.experience || '—',
+    },
+    {
+      key: 'callDuration',
+      header: 'Call Duration',
+      render: (c: Candidate) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+          {c.callDuration || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'lastActivity',
+      header: 'Last Activity',
+      render: (c: Candidate) => (
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+          {c.lastActivity || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      align: 'right',
+      render: (c: Candidate) => (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenCandidate(c);
+          }}
+        >
+          Inspect
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="page-content animate-fade-in">
-      <PageHeader title="Candidates" subtitle="All candidates across your hirings." />
+      <PageHeader
+        title="Candidate Directory"
+        subtitle="Global directory of all candidate profiles across active and completed hirings."
+        actions={
+          <Button
+            variant="outline"
+            size="md"
+            icon={<Download size={14} />}
+            onClick={handleExportCSV}
+          >
+            Export All to CSV
+          </Button>
+        }
+      />
 
-      <div className="candidates-toolbar">
-        <div className="candidates-toolbar__search">
-          <Input
-            placeholder="Search by name, hiring, or phone..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            leftIcon={<Search size={15} />}
-          />
+      {/* Filter Row */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* Status Pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Filter size={12} /> Status:
+          </span>
+          {['all', 'shortlisted', 'interested', 'connected', 'contacted', 'no_answer', 'added'].map(statusKey => (
+            <button
+              key={statusKey}
+              onClick={() => setActiveFilter(statusKey)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 500,
+                border: '1px solid',
+                borderColor: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--border-default)',
+                background: activeFilter === statusKey ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                color: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+              }}
+            >
+              {statusKey === 'added' ? 'Queued' : statusKey.replace('_', ' ')}
+              {statusKey === 'all'
+                ? ` (${candidates.length})`
+                : ` (${candidates.filter(c => c.status === statusKey).length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Hiring Campaign Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <select
+            value={selectedHiringId}
+            onChange={e => setSelectedHiringId(e.target.value)}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--text-primary)',
+              background: 'var(--bg-white)',
+              cursor: 'pointer',
+            }}
+            aria-label="Filter by hiring campaign"
+          >
+            <option value="all">All Campaigns ({hirings.length})</option>
+            {hirings.map(h => (
+              <option key={h.id} value={h.id}>
+                {h.title} ({h.candidateCount})
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="candidates-filter-row">
-        <Tabs tabs={tabsWithCount} activeTab={activeFilter} onChange={id => setActiveFilter(id as FilterTab)} />
-      </div>
+      {/* Candidate Data Table */}
+      <DataTable
+        columns={columns}
+        data={filtered}
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by name, phone, or email…"
+        onRowClick={handleOpenCandidate}
+        batchActions={() => (
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<CheckCircle2 size={13} />}
+              onClick={handleBulkShortlist}
+            >
+              Bulk Shortlist
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBulkDisqualify}
+            >
+              Mark Not Interested
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Download size={13} />}
+              onClick={handleExportCSV}
+            >
+              Export Selected
+            </Button>
+          </>
+        )}
+        emptyIcon={<Users size={24} />}
+        emptyTitle="No candidates found"
+        emptyDescription={
+          candidates.length === 0
+            ? 'Candidates will appear here once you create a hiring campaign and import candidates.'
+            : 'Try adjusting your search criteria or filter options.'
+        }
+      />
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Users size={24} />}
-          title={candidates.length === 0 ? 'No candidates yet' : 'No candidates found'}
-          description={
-            candidates.length === 0
-              ? 'Candidates will appear here once you create a hiring and import your list.'
-              : 'Try adjusting your search or filters.'
-          }
-        />
-      ) : (
-        <div className="candidates-table-wrap">
-          <table className="candidates-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Hiring</th>
-                <th>Phone</th>
-                <th>Status</th>
-                <th>Last activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(candidate => (
-                <tr
-                  key={candidate.id}
-                  onClick={() => navigate(`/candidates/${candidate.id}`)}
-                  className="candidates-table__row"
-                >
-                  <td>
-                    <div className="candidate-name-cell">
-                      <Avatar name={candidate.name} size="sm" color="var(--brand-primary)" />
-                      <div className="candidate-name-info">
-                        <span className="candidate-name">{candidate.name}</span>
-                        {candidate.location && (
-                          <span className="candidate-location">{candidate.location}</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {candidate.hiringTitle
-                      ? <span className="candidate-hiring">{candidate.hiringTitle}</span>
-                      : '—'}
-                  </td>
-                  <td className="candidate-phone">{candidate.phone}</td>
-                  <td><CandidateStatusBadge status={candidate.status} /></td>
-                  <td className="candidate-activity">{candidate.lastActivity || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Candidate Drawer */}
+      <CandidateDrawer
+        candidate={selectedCandidate}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onCallAgain={handleCallAgain}
+      />
+
+      {/* Dialer Modal */}
+      <DialerModal
+        open={dialerOpen}
+        initialPhone={dialerCandidate?.phone}
+        initialCandidateName={dialerCandidate?.name}
+        onClose={() => {
+          setDialerOpen(false);
+          setDialerCandidate(null);
+        }}
+      />
     </div>
   );
 };
 
 export default Candidates;
-
-const style = document.createElement('style');
-style.textContent = `
-.candidates-toolbar { margin-bottom: 0; }
-.candidates-toolbar__search { max-width: 380px; margin-bottom: 16px; }
-.candidates-filter-row { margin-bottom: 20px; }
-.candidates-table-wrap { background: var(--bg-white); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; overflow-x: auto; }
-.candidates-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
-.candidates-table th { padding: 11px 16px; text-align: left; font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-subtle); border-bottom: 1px solid var(--border-default); white-space: nowrap; }
-.candidates-table td { padding: 14px 16px; border-bottom: 1px solid var(--border-default); vertical-align: middle; }
-.candidates-table tr:last-child td { border-bottom: none; }
-.candidates-table__row { cursor: pointer; transition: background var(--transition-fast); }
-.candidates-table__row:hover td { background: var(--bg-hover); }
-.candidate-name-cell { display: flex; align-items: center; gap: 10px; }
-.candidate-name-info { display: flex; flex-direction: column; gap: 1px; }
-.candidate-name { font-weight: 500; color: var(--text-primary); font-size: var(--font-size-base); }
-.candidate-location { font-size: var(--font-size-xs); color: var(--text-tertiary); }
-.candidate-hiring { color: var(--brand-primary); font-weight: 500; font-size: var(--font-size-sm); }
-.candidate-phone { color: var(--text-secondary); }
-.candidate-activity { color: var(--text-tertiary); font-size: var(--font-size-xs); }
-`;
-if (typeof document !== 'undefined' && !document.getElementById('candidates-page-styles')) {
-  style.id = 'candidates-page-styles';
-  document.head.appendChild(style);
-}
