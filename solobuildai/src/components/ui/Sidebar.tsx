@@ -9,8 +9,9 @@ import {
   Settings,
   Menu,
   X,
+  CalendarDays,
 } from 'lucide-react';
-import { useHirings, useCandidates } from '../../store/appStore';
+import { useHirings, useCandidates, useInterviews } from '../../store/appStore';
 
 interface NavItem {
   path: string;
@@ -19,11 +20,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'Home', icon: <Home size={18} strokeWidth={1.75} /> },
-  { path: '/hiring', label: 'Hiring', icon: <Briefcase size={18} strokeWidth={1.75} /> },
-  { path: '/candidates', label: 'Candidates', icon: <Users size={18} strokeWidth={1.75} /> },
-  { path: '/recruiters', label: 'AI Recruiters', icon: <Bot size={18} strokeWidth={1.75} /> },
-  { path: '/activity', label: 'Activity', icon: <Activity size={18} strokeWidth={1.75} /> },
+  { path: '/',            label: 'Home',          icon: <Home         size={18} strokeWidth={1.75} /> },
+  { path: '/hiring',      label: 'Hiring',        icon: <Briefcase    size={18} strokeWidth={1.75} /> },
+  { path: '/candidates',  label: 'Candidates',    icon: <Users        size={18} strokeWidth={1.75} /> },
+  { path: '/recruiters',  label: 'AI Recruiters', icon: <Bot          size={18} strokeWidth={1.75} /> },
+  { path: '/interviews',  label: 'Interviews',    icon: <CalendarDays size={18} strokeWidth={1.75} /> },
+  { path: '/activity',    label: 'Activity',      icon: <Activity     size={18} strokeWidth={1.75} /> },
 ];
 
 const bottomItems: NavItem[] = [
@@ -34,9 +36,11 @@ export const Sidebar: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const hirings = useHirings();
   const candidates = useCandidates();
+  const interviews = useInterviews();
 
   const isCalling = hirings.some(h => h.status === 'calling');
   const candidateCount = candidates.length;
+  const upcomingInterviewCount = interviews.filter(i => i.status === 'upcoming').length;
 
   return (
     <>
@@ -84,6 +88,7 @@ export const Sidebar: React.FC = () => {
             {navItems.map(item => {
               const showCallingBadge = item.path === '/hiring' && isCalling;
               const showCandidateCount = item.path === '/candidates' && candidateCount > 0;
+              const showInterviewCount = item.path === '/interviews' && upcomingInterviewCount > 0;
 
               return (
                 <NavLink
@@ -121,6 +126,20 @@ export const Sidebar: React.FC = () => {
                       }}
                     >
                       {candidateCount}
+                    </span>
+                  )}
+                  {showInterviewCount && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--brand-primary-light)',
+                        color: 'var(--brand-primary)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {upcomingInterviewCount}
                     </span>
                   )}
                 </NavLink>

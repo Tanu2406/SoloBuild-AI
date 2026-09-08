@@ -1,12 +1,13 @@
 // ============================================================
 // SoloBuildAI — Global Application Store
 // React Context + useReducer with localStorage persistence.
-// All pages read from this store — never from raw mock data.
-// Later: swap localStorage calls for FastAPI fetch calls.
 // ============================================================
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { Hiring, Candidate, AIRecruiter, Call, ActivityItem, DirectCall } from '../types';
+import type {
+  Hiring, Candidate, AIRecruiter, Call,
+  ActivityItem, DirectCall, Interview,
+} from '../types';
 import { seedData } from './seedData';
 
 // ——— State shape ———
@@ -17,6 +18,7 @@ export interface AppState {
   calls: Call[];
   directCalls: DirectCall[];
   activity: ActivityItem[];
+  interviews: Interview[];
   initialized: boolean;
 }
 
@@ -35,6 +37,8 @@ type Action =
   | { type: 'ADD_DIRECT_CALL'; payload: DirectCall }
   | { type: 'UPDATE_DIRECT_CALL'; payload: { id: string; updates: Partial<DirectCall> } }
   | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
+  | { type: 'SCHEDULE_INTERVIEW'; payload: Interview }
+  | { type: 'UPDATE_INTERVIEW'; payload: { id: string; updates: Partial<Interview> } }
   | { type: 'RESET_TO_SEED' };
 
 // ——— Derived helpers ———
@@ -43,23 +47,24 @@ function computeHiringStats(hiring: Hiring, candidates: Candidate[]): Partial<Hi
   return {
     candidateCount: hiringCandidates.length,
     contacted: hiringCandidates.filter(c =>
-      ['contacted', 'connected', 'interested', 'shortlisted', 'not_interested', 'no_answer', 'busy', 'call_failed'].includes(c.status)
+      ['contacted', 'connected', 'interested', 'shortlisted', 'interview_scheduled',
+       'interview_completed', 'hired', 'not_interested', 'no_answer', 'busy', 'call_failed'].includes(c.status)
     ).length,
     connected: hiringCandidates.filter(c =>
-      ['connected', 'interested', 'shortlisted'].includes(c.status)
+      ['connected', 'interested', 'shortlisted', 'interview_scheduled',
+       'interview_completed', 'hired'].includes(c.status)
     ).length,
     interested: hiringCandidates.filter(c =>
-      ['interested', 'shortlisted'].includes(c.status)
+      ['interested', 'shortlisted', 'interview_scheduled', 'interview_completed', 'hired'].includes(c.status)
     ).length,
-    shortlisted: hiringCandidates.filter(c => c.status === 'shortlisted').length,
+    shortlisted: hiringCandidates.filter(c =>
+      ['shortlisted', 'interview_scheduled', 'interview_completed', 'hired'].includes(c.status)
+    ).length,
   };
 }
 
 function recomputeAllHiringStats(hirings: Hiring[], candidates: Candidate[]): Hiring[] {
-  return hirings.map(h => ({
-    ...h,
-    ...computeHiringStats(h, candidates),
-  }));
+  return hirings.map(h => ({ ...h, ...computeHiringStats(h, candidates) }));
 }
 
 // ——— Reducer ———
@@ -72,10 +77,8 @@ function reducer(state: AppState, action: Action): AppState {
     case 'RESET_TO_SEED':
       return { ...seedData, initialized: true };
 
-    case 'CREATE_HIRING': {
-      const hirings = [...state.hirings, action.payload];
-      return { ...state, hirings };
-    }
+    case 'CREATE_HIRING':
+      return { ...state, hirings: [...state.hirings, action.payload] };
 
     case 'UPDATE_HIRING': {
       const hirings = state.hirings.map(h =>
@@ -86,13 +89,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, hirings };
     }
 
-    case 'DELETE_HIRING': {
+    case 'DELETE_HIRING':
       return {
         ...state,
         hirings: state.hirings.filter(h => h.id !== action.payload),
         candidates: state.candidates.filter(c => c.hiringId !== action.payload),
       };
-    }
 
     case 'ADD_CANDIDATES': {
       const { hiringId, candidates: newCandidates } = action.payload;
@@ -104,8 +106,7 @@ function reducer(state: AppState, action: Action): AppState {
         if (h.id !== hiringId) return h;
         const stats = computeHiringStats(h, merged);
         return {
-          ...h,
-          ...stats,
+          ...h, ...stats,
           candidateIds: merged.filter(c => c.hiringId === hiringId).map(c => c.id),
           updatedAt: new Date().toISOString(),
         };
@@ -117,7 +118,6 @@ function reducer(state: AppState, action: Action): AppState {
       const candidates = state.candidates.map(c =>
         c.id === action.payload.id ? { ...c, ...action.payload.updates } : c
       );
-      // Recompute hiring stats after any candidate update
       const hirings = recomputeAllHiringStats(state.hirings, candidates);
       return { ...state, candidates, hirings };
     }
@@ -153,6 +153,19 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ADD_ACTIVITY':
       return { ...state, activity: [action.payload, ...state.activity] };
 
+    case 'SCHEDULE_INTERVIEW':
+      return { ...state, interviews: [action.payload, ...state.interviews] };
+
+    case 'UPDATE_INTERVIEW':
+      return {
+        ...state,
+        interviews: state.interviews.map(i =>
+          i.id === action.payload.id
+            ? { ...i, ...action.payload.updates, updatedAt: new Date().toISOString() }
+            : i
+        ),
+      };
+
     default:
       return state;
   }
@@ -169,40 +182,31 @@ const AppContext = createContext<AppContextValue>({
   dispatch: () => {},
 });
 
-const STORAGE_KEY = 'solobuildai_v1';
+const STORAGE_KEY = 'solobuildai_v2';
 
 // ——— Provider ———
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, { ...seedData, initialized: false });
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed: AppState = JSON.parse(raw);
-        // Validate basic shape before trusting it
         if (parsed.hirings && parsed.candidates && parsed.recruiters) {
-          // Backfill directCalls if missing (added in later version)
           if (!parsed.directCalls) parsed.directCalls = [];
+          if (!parsed.interviews) parsed.interviews = [];
           dispatch({ type: 'HYDRATE', payload: { ...parsed, initialized: true } });
           return;
         }
       }
-    } catch {
-      // Corrupted data — fall through to seed
-    }
+    } catch { /* corrupted — fall to seed */ }
     dispatch({ type: 'HYDRATE', payload: { ...seedData, initialized: true } });
   }, []);
 
-  // Persist to localStorage on every state change (after init)
   useEffect(() => {
     if (!state.initialized) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // Storage full or unavailable — ignore
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
   }, [state]);
 
   return React.createElement(AppContext.Provider, { value: { state, dispatch } }, children);
@@ -210,12 +214,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useAppStore = () => useContext(AppContext);
 
-// ——— Convenience selector hooks ———
+// ——— Selector hooks ———
 export const useHirings = () => useAppStore().state.hirings;
 export const useCandidates = () => useAppStore().state.candidates;
 export const useRecruiters = () => useAppStore().state.recruiters;
 export const useCalls = () => useAppStore().state.calls;
 export const useActivity = () => useAppStore().state.activity;
+export const useInterviews = () => useAppStore().state.interviews;
 
 export const useHiring = (id: string) =>
   useAppStore().state.hirings.find(h => h.id === id);

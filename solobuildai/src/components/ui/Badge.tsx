@@ -20,11 +20,13 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, dot
 
 export const HiringStatusBadge: React.FC<{ status: HiringStatus }> = ({ status }) => {
   const map: Record<HiringStatus, { variant: BadgeVariant; label: string; dot: boolean }> = {
-    calling: { variant: 'success', label: 'Calling', dot: true },
-    ready: { variant: 'info', label: 'Ready', dot: false },
-    paused: { variant: 'warning', label: 'Paused', dot: false },
+    calling:   { variant: 'success', label: 'Calling',   dot: true },
+    ready:     { variant: 'info',    label: 'Ready',     dot: false },
+    paused:    { variant: 'warning', label: 'Paused',    dot: false },
     completed: { variant: 'neutral', label: 'Completed', dot: false },
-    draft: { variant: 'neutral', label: 'Draft', dot: false },
+    draft:     { variant: 'neutral', label: 'Draft',     dot: false },
+    screening: { variant: 'info',    label: 'Screening', dot: true },
+    screened:  { variant: 'primary', label: 'Screened',  dot: false },
   };
   const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status, dot: false };
   return <Badge variant={config.variant} dot={config.dot}>{config.label}</Badge>;
@@ -32,16 +34,19 @@ export const HiringStatusBadge: React.FC<{ status: HiringStatus }> = ({ status }
 
 export const CandidateStatusBadge: React.FC<{ status: CandidateStatus }> = ({ status }) => {
   const map: Record<CandidateStatus, { variant: BadgeVariant; label: string; dot?: boolean }> = {
-    added: { variant: 'neutral', label: 'Queued', dot: false },
-    calling: { variant: 'info', label: 'Calling…', dot: true },
-    contacted: { variant: 'info', label: 'Contacted', dot: false },
-    connected: { variant: 'primary', label: 'Connected', dot: false },
-    interested: { variant: 'success', label: 'Interested', dot: true },
-    shortlisted: { variant: 'success', label: 'Shortlisted', dot: true },
-    not_interested: { variant: 'neutral', label: 'Not Interested', dot: false },
-    no_answer: { variant: 'warning', label: 'No Answer', dot: true },
-    busy: { variant: 'warning', label: 'Line Busy', dot: false },
-    call_failed: { variant: 'error', label: 'Call Failed', dot: false },
+    added:                { variant: 'neutral', label: 'Queued',             dot: false },
+    calling:              { variant: 'info',    label: 'Calling…',           dot: true },
+    contacted:            { variant: 'info',    label: 'Contacted',          dot: false },
+    connected:            { variant: 'primary', label: 'Connected',          dot: false },
+    interested:           { variant: 'success', label: 'Interested',         dot: true },
+    shortlisted:          { variant: 'success', label: 'Shortlisted',        dot: true },
+    interview_scheduled:  { variant: 'primary', label: 'Interview Scheduled',dot: true },
+    interview_completed:  { variant: 'success', label: 'Interview Done',     dot: false },
+    hired:                { variant: 'success', label: 'Hired',              dot: false },
+    not_interested:       { variant: 'neutral', label: 'Not Interested',     dot: false },
+    no_answer:            { variant: 'warning', label: 'No Answer',          dot: true },
+    busy:                 { variant: 'warning', label: 'Line Busy',          dot: false },
+    call_failed:          { variant: 'error',   label: 'Call Failed',        dot: false },
   };
   const config = map[status] ?? { variant: 'neutral' as BadgeVariant, label: status, dot: false };
   return <Badge variant={config.variant} dot={config.dot}>{config.label}</Badge>;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, PhoneOff, PhoneMissed, Star, Briefcase, Play, Pause } from 'lucide-react';
+import { Phone, PhoneOff, PhoneMissed, Star, Briefcase, Play, Pause, Sparkles, Calendar, CheckCircle2, UserCheck } from 'lucide-react';
 import type { ActivityItem as ActivityItemType, ActivityType } from '../../types';
 
 interface ActivityItemProps {
@@ -7,71 +7,27 @@ interface ActivityItemProps {
 }
 
 const iconMap: Record<ActivityType, { icon: React.ReactNode; color: string; bg: string }> = {
-  call_completed: {
-    icon: <Phone size={14} />,
-    color: 'var(--status-success-text)',
-    bg: 'var(--status-success-bg)',
-  },
-  call_failed: {
-    icon: <PhoneOff size={14} />,
-    color: 'var(--status-error-text)',
-    bg: 'var(--status-error-bg)',
-  },
-  call_no_answer: {
-    icon: <PhoneMissed size={14} />,
-    color: 'var(--status-warning-text)',
-    bg: 'var(--status-warning-bg)',
-  },
-  candidate_interested: {
-    icon: <Star size={14} />,
-    color: 'var(--status-success-text)',
-    bg: 'var(--status-success-bg)',
-  },
-  candidate_shortlisted: {
-    icon: <Star size={14} />,
-    color: '#15803d',
-    bg: '#f0fdf4',
-  },
-  hiring_created: {
-    icon: <Briefcase size={14} />,
-    color: 'var(--brand-primary)',
-    bg: 'var(--brand-primary-light)',
-  },
-  hiring_launched: {
-    icon: <Play size={14} />,
-    color: 'var(--brand-primary)',
-    bg: 'var(--brand-primary-light)',
-  },
-  hiring_paused: {
-    icon: <Pause size={14} />,
-    color: 'var(--status-warning-text)',
-    bg: 'var(--status-warning-bg)',
-  },
-  hiring_resumed: {
-    icon: <Play size={14} />,
-    color: 'var(--brand-primary)',
-    bg: 'var(--brand-primary-light)',
-  },
-  hiring_completed: {
-    icon: <Briefcase size={14} />,
-    color: 'var(--status-success-text)',
-    bg: 'var(--status-success-bg)',
-  },
-  direct_call_completed: {
-    icon: <Phone size={14} />,
-    color: 'var(--brand-primary)',
-    bg: 'var(--brand-primary-light)',
-  },
-  direct_call_failed: {
-    icon: <PhoneOff size={14} />,
-    color: 'var(--status-error-text)',
-    bg: 'var(--status-error-bg)',
-  },
-  direct_call_no_answer: {
-    icon: <PhoneMissed size={14} />,
-    color: 'var(--status-warning-text)',
-    bg: 'var(--status-warning-bg)',
-  },
+  call_completed:       { icon: <Phone size={14} />,        color: 'var(--status-success-text)', bg: 'var(--status-success-bg)' },
+  call_failed:          { icon: <PhoneOff size={14} />,     color: 'var(--status-error-text)',   bg: 'var(--status-error-bg)' },
+  call_no_answer:       { icon: <PhoneMissed size={14} />,  color: 'var(--status-warning-text)', bg: 'var(--status-warning-bg)' },
+  candidate_interested: { icon: <Star size={14} />,         color: 'var(--status-success-text)', bg: 'var(--status-success-bg)' },
+  candidate_shortlisted:{ icon: <Star size={14} />,         color: '#15803d', bg: '#f0fdf4' },
+  hiring_created:       { icon: <Briefcase size={14} />,    color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  hiring_launched:      { icon: <Play size={14} />,         color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  hiring_paused:        { icon: <Pause size={14} />,        color: 'var(--status-warning-text)', bg: 'var(--status-warning-bg)' },
+  hiring_resumed:       { icon: <Play size={14} />,         color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  hiring_completed:     { icon: <Briefcase size={14} />,    color: 'var(--status-success-text)', bg: 'var(--status-success-bg)' },
+  direct_call_completed:{ icon: <Phone size={14} />,        color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  direct_call_failed:   { icon: <PhoneOff size={14} />,     color: 'var(--status-error-text)',   bg: 'var(--status-error-bg)' },
+  direct_call_no_answer:{ icon: <PhoneMissed size={14} />,  color: 'var(--status-warning-text)', bg: 'var(--status-warning-bg)' },
+  screening_started:    { icon: <Sparkles size={14} />,     color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  screening_completed:  { icon: <Sparkles size={14} />,     color: '#15803d',                   bg: '#f0fdf4' },
+  candidate_compatible: { icon: <CheckCircle2 size={14} />, color: 'var(--status-success-text)', bg: 'var(--status-success-bg)' },
+  candidate_incompatible:{ icon: <PhoneOff size={14} />,    color: 'var(--status-error-text)',   bg: 'var(--status-error-bg)' },
+  candidate_included:   { icon: <UserCheck size={14} />,    color: 'var(--brand-primary)',       bg: 'var(--brand-primary-light)' },
+  interview_scheduled:  { icon: <Calendar size={14} />,     color: '#7c3aed',                   bg: '#f5f3ff' },
+  interview_completed:  { icon: <CheckCircle2 size={14} />, color: 'var(--status-success-text)', bg: 'var(--status-success-bg)' },
+  interview_cancelled:  { icon: <PhoneOff size={14} />,     color: 'var(--status-error-text)',   bg: 'var(--status-error-bg)' },
 };
 
 export const ActivityItemComponent: React.FC<ActivityItemProps> = ({ item }) => {

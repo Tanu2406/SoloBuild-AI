@@ -16,6 +16,7 @@ export interface CandidateDrawerProps {
   open: boolean;
   onClose: () => void;
   onCallAgain?: (candidate: Candidate) => void;
+  onScheduleInterview?: (candidate: Candidate) => void;
 }
 
 export const CandidateDrawer: React.FC<CandidateDrawerProps> = ({
@@ -23,6 +24,7 @@ export const CandidateDrawer: React.FC<CandidateDrawerProps> = ({
   open,
   onClose,
   onCallAgain,
+  onScheduleInterview,
 }) => {
   const { dispatch } = useAppStore();
   const { showToast } = useToast();
@@ -78,7 +80,12 @@ export const CandidateDrawer: React.FC<CandidateDrawerProps> = ({
   };
 
   const handleScheduleInterview = () => {
-    showToast(`Interview invitation link generated for ${candidate.name}`, 'success');
+    if (onScheduleInterview && candidate) {
+      onScheduleInterview(candidate);
+      onClose();
+    } else {
+      showToast(`Interview invitation link generated for ${candidate!.name}`, 'success');
+    }
   };
 
   const hasCallRecord = candidate.callDuration && candidate.callDuration !== '—';
