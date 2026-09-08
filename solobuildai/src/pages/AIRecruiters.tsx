@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Bot } from 'lucide-react';
+import { Plus, Pencil, Trash2, Bot, Search, X } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Button } from '../components/ui/Button';
 import { Input, Textarea, Select } from '../components/ui/Input';
@@ -70,6 +70,11 @@ const AIRecruiters: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<RecruiterForm>(defaultForm);
   const [errors, setErrors] = useState<Partial<RecruiterForm>>({});
+
+  // Search & filter state
+  const [search, setSearch] = useState('');
+  const [langFilter, setLangFilter] = useState('all');
+  const [styleFilter, setStyleFilter] = useState('all');
 
   const openCreate = () => {
     setEditingRecruiter(null);
@@ -143,6 +148,33 @@ const AIRecruiters: React.FC = () => {
     }
   };
 
+  // Filter recruiters based on search + dropdowns
+  const filteredRecruiters = recruiters.filter(r => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      r.name.toLowerCase().includes(q) ||
+      r.conversationStyle.toLowerCase().includes(q) ||
+      r.languages.some(l => l.toLowerCase().includes(q)) ||
+      r.voice.toLowerCase().includes(q);
+
+    const matchesLang =
+      langFilter === 'all' ||
+      r.languages.some(l => l.toLowerCase().includes(langFilter.toLowerCase()));
+
+    const matchesStyle =
+      styleFilter === 'all' ||
+      r.conversationStyle.toLowerCase().includes(styleFilter.toLowerCase());
+
+    return matchesSearch && matchesLang && matchesStyle;
+  });
+
+  // Unique languages across all recruiters for the filter dropdown
+  const allLanguages = Array.from(new Set(recruiters.flatMap(r => r.languages)));
+  const allStyles = Array.from(new Set(recruiters.map(r => r.conversationStyle)));
+
+  const hasActiveFilters = search || langFilter !== 'all' || styleFilter !== 'all';
+
   return (
     <div className="page-content animate-fade-in">
       <PageHeader
@@ -163,49 +195,175 @@ const AIRecruiters: React.FC = () => {
           action={{ label: 'Create AI Recruiter', onClick: openCreate }}
         />
       ) : (
-        <div className="recruiters-grid">
-          {recruiters.map(recruiter => (
-            <div key={recruiter.id} className="recruiter-detail-card">
-              <div className="rdc__header">
-                <div className="rdc__identity">
-                  <Avatar name={recruiter.name} size="lg" color={recruiter.avatarColor} />
-                  <div className="rdc__info">
-                    <h3 className="rdc__name">{recruiter.name}</h3>
-                    <p className="rdc__desc">{recruiter.description}</p>
-                  </div>
-                </div>
-                <div className="rdc__actions">
-                  <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => openEdit(recruiter)}>
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={() => handleDelete(recruiter)} />
-                </div>
+        <>
+          {/* Search + filter bar — only shown when there are recruiters */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {/* Search input */}
+            <div style={{ flex: '1', minWidth: '200px', maxWidth: '320px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'var(--bg-white)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '6px 10px',
+                  transition: 'border-color var(--transition-fast)',
+                }}
+              >
+                <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search recruiters…"
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--text-primary)',
+                    background: 'transparent',
+                    fontFamily: 'var(--font-family)',
+                  }}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 0 }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
-
-              <div className="rdc__attrs">
-                <div className="rdc__attr">
-                  <span className="rdc__attr-label">Languages</span>
-                  <span className="rdc__attr-value">{recruiter.languages.join(', ')}</span>
-                </div>
-                <div className="rdc__attr">
-                  <span className="rdc__attr-label">Style</span>
-                  <span className="rdc__attr-value">{recruiter.conversationStyle}</span>
-                </div>
-                <div className="rdc__attr">
-                  <span className="rdc__attr-label">Voice</span>
-                  <span className="rdc__attr-value">{recruiter.voice}</span>
-                </div>
-              </div>
-
-              {recruiter.interviewInstructions && (
-                <div className="rdc__instructions">
-                  <span className="rdc__instructions-label">Interview instructions</span>
-                  <p className="rdc__instructions-text">{recruiter.interviewInstructions}</p>
-                </div>
-              )}
             </div>
-          ))}
-        </div>
+
+            {/* Language filter */}
+            <select
+              value={langFilter}
+              onChange={e => setLangFilter(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-sm)',
+                border: `1px solid ${langFilter !== 'all' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                fontSize: 'var(--font-size-xs)',
+                color: langFilter !== 'all' ? 'var(--brand-primary)' : 'var(--text-primary)',
+                background: langFilter !== 'all' ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                cursor: 'pointer',
+              }}
+              aria-label="Filter by language"
+            >
+              <option value="all">All Languages</option>
+              {allLanguages.map(l => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+
+            {/* Style filter */}
+            <select
+              value={styleFilter}
+              onChange={e => setStyleFilter(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-sm)',
+                border: `1px solid ${styleFilter !== 'all' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+                fontSize: 'var(--font-size-xs)',
+                color: styleFilter !== 'all' ? 'var(--brand-primary)' : 'var(--text-primary)',
+                background: styleFilter !== 'all' ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                cursor: 'pointer',
+              }}
+              aria-label="Filter by conversation style"
+            >
+              <option value="all">All Styles</option>
+              {allStyles.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={() => { setSearch(''); setLangFilter('all'); setStyleFilter('all'); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 500,
+                  border: '1px solid var(--border-default)',
+                  background: 'var(--bg-white)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={11} /> Clear
+              </button>
+            )}
+          </div>
+
+          {filteredRecruiters.length === 0 ? (
+            <EmptyState
+              icon={<Bot size={24} />}
+              title="No recruiters match your filters"
+              description="Try adjusting your search or clearing the filters."
+              action={{ label: 'Clear filters', onClick: () => { setSearch(''); setLangFilter('all'); setStyleFilter('all'); } }}
+            />
+          ) : (
+            <div className="recruiters-grid">
+              {filteredRecruiters.map(recruiter => (
+                <div key={recruiter.id} className="recruiter-detail-card">
+                  <div className="rdc__header">
+                    <div className="rdc__identity">
+                      <Avatar name={recruiter.name} size="lg" color={recruiter.avatarColor} />
+                      <div className="rdc__info">
+                        <h3 className="rdc__name">{recruiter.name}</h3>
+                        <p className="rdc__desc">{recruiter.description}</p>
+                      </div>
+                    </div>
+                    <div className="rdc__actions">
+                      <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => openEdit(recruiter)}>
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={() => handleDelete(recruiter)} />
+                    </div>
+                  </div>
+
+                  <div className="rdc__attrs">
+                    <div className="rdc__attr">
+                      <span className="rdc__attr-label">Languages</span>
+                      <span className="rdc__attr-value">{recruiter.languages.join(', ')}</span>
+                    </div>
+                    <div className="rdc__attr">
+                      <span className="rdc__attr-label">Style</span>
+                      <span className="rdc__attr-value">{recruiter.conversationStyle}</span>
+                    </div>
+                    <div className="rdc__attr">
+                      <span className="rdc__attr-label">Voice</span>
+                      <span className="rdc__attr-value">{recruiter.voice}</span>
+                    </div>
+                  </div>
+
+                  {recruiter.interviewInstructions && (
+                    <div className="rdc__instructions">
+                      <span className="rdc__instructions-label">Interview instructions</span>
+                      <p className="rdc__instructions-text">{recruiter.interviewInstructions}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <Modal

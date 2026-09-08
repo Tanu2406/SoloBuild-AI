@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity as ActivityIcon, Search } from 'lucide-react';
+import { Activity as ActivityIcon, Search, X } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Tabs } from '../components/ui/Tabs';
 import { Input } from '../components/ui/Input';
@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { CandidateDrawer } from '../components/product/CandidateDrawer';
 import { DialerModal } from '../components/product/DialerModal';
-import { useActivity, useCandidates } from '../store/appStore';
+import { useActivity, useCandidates, useHirings, useRecruiters } from '../store/appStore';
 import type { ActivityType, Candidate } from '../types';
 
 type ActivityFilter = 'all' | 'calls' | 'direct' | 'hiring';
@@ -36,9 +36,13 @@ const hiringEventTypes: ActivityType[] = [
 const ActivityPage: React.FC = () => {
   const activity = useActivity();
   const candidates = useCandidates();
+  const hirings = useHirings();
+  const recruiters = useRecruiters();
 
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [search, setSearch] = useState('');
+  const [hiringFilter, setHiringFilter] = useState('all');
+  const [recruiterFilter, setRecruiterFilter] = useState('all');
 
   // Drawer and dialer states
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -64,12 +68,29 @@ const ActivityPage: React.FC = () => {
       filter === 'hiring' ? hiringEventTypes.includes(item.type) :
       true;
 
+    const matchesHiring =
+      hiringFilter === 'all' ||
+      (item.hiringTitle || '') === hirings.find(h => h.id === hiringFilter)?.title;
+
+    // recruiter filter: match via candidates that belong to the selected hiring
+    const matchesRecruiter =
+      recruiterFilter === 'all' ||
+      (() => {
+        const rec = recruiters.find(r => r.id === recruiterFilter);
+        if (!rec) return false;
+        // find hirings assigned to this recruiter, then check if the activity's hiringTitle matches
+        const recHiringTitles = hirings
+          .filter(h => h.aiRecruiterId === recruiterFilter)
+          .map(h => h.title);
+        return recHiringTitles.includes(item.hiringTitle || '');
+      })();
+
     const matchesSearch =
       (item.candidateName || '').toLowerCase().includes(search.toLowerCase()) ||
       (item.hiringTitle || '').toLowerCase().includes(search.toLowerCase()) ||
       item.description.toLowerCase().includes(search.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesHiring && matchesRecruiter && matchesSearch;
   });
 
   const tabsWithCount = activityTabs.map(t => ({
@@ -100,6 +121,13 @@ const ActivityPage: React.FC = () => {
     return { label: 'Campaign Event', bg: 'var(--bg-subtle)', text: 'var(--text-secondary)' };
   };
 
+  const hasActiveFilters = hiringFilter !== 'all' || recruiterFilter !== 'all' || search;
+  const clearFilters = () => {
+    setHiringFilter('all');
+    setRecruiterFilter('all');
+    setSearch('');
+  };
+
   return (
     <div className="page-content animate-fade-in">
       <PageHeader
@@ -107,14 +135,14 @@ const ActivityPage: React.FC = () => {
         subtitle="Chronological audit history of autonomous AI calls, candidate evaluations, and campaign events."
       />
 
-      {/* Toolbar */}
+      {/* Toolbar — tabs + search */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '16px',
-          marginBottom: '18px',
+          marginBottom: '12px',
           flexWrap: 'wrap',
         }}
       >
@@ -128,6 +156,81 @@ const ActivityPage: React.FC = () => {
             leftIcon={<Search size={14} />}
           />
         </div>
+      </div>
+
+      {/* Secondary filter row — hiring + recruiter dropdowns */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '18px',
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* Hiring filter */}
+        <select
+          value={hiringFilter}
+          onChange={e => setHiringFilter(e.target.value)}
+          style={{
+            padding: '6px 10px',
+            borderRadius: 'var(--radius-sm)',
+            border: `1px solid ${hiringFilter !== 'all' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+            fontSize: 'var(--font-size-xs)',
+            color: hiringFilter !== 'all' ? 'var(--brand-primary)' : 'var(--text-primary)',
+            background: hiringFilter !== 'all' ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+            cursor: 'pointer',
+          }}
+          aria-label="Filter by hiring campaign"
+        >
+          <option value="all">All Campaigns</option>
+          {hirings.map(h => (
+            <option key={h.id} value={h.id}>{h.title}</option>
+          ))}
+        </select>
+
+        {/* AI Recruiter filter */}
+        <select
+          value={recruiterFilter}
+          onChange={e => setRecruiterFilter(e.target.value)}
+          style={{
+            padding: '6px 10px',
+            borderRadius: 'var(--radius-sm)',
+            border: `1px solid ${recruiterFilter !== 'all' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+            fontSize: 'var(--font-size-xs)',
+            color: recruiterFilter !== 'all' ? 'var(--brand-primary)' : 'var(--text-primary)',
+            background: recruiterFilter !== 'all' ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+            cursor: 'pointer',
+          }}
+          aria-label="Filter by AI recruiter"
+        >
+          <option value="all">All AI Recruiters</option>
+          {recruiters.map(r => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--font-size-xs)',
+              fontWeight: 500,
+              border: '1px solid var(--border-default)',
+              background: 'var(--bg-white)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={11} /> Clear filters
+          </button>
+        )}
       </div>
 
       {/* Activity Log Table */}

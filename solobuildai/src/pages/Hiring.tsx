@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, LayoutGrid, List, Briefcase } from 'lucide-react';
+import { Plus, LayoutGrid, List, Briefcase, X } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
@@ -26,6 +26,7 @@ const HiringPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all');
 
   const filtered = hirings.filter(h => {
     const matchesTab =
@@ -36,7 +37,10 @@ const HiringPage: React.FC = () => {
     const matchesSearch =
       h.title.toLowerCase().includes(search.toLowerCase()) ||
       h.location.toLowerCase().includes(search.toLowerCase());
-    return matchesTab && matchesSearch;
+    const matchesType =
+      employmentTypeFilter === 'all' ||
+      h.employmentType === employmentTypeFilter;
+    return matchesTab && matchesSearch && matchesType;
   });
 
   const tabs = [
@@ -184,6 +188,50 @@ const HiringPage: React.FC = () => {
         <Tabs tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as TabId)} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Employment type filter */}
+          <select
+            value={employmentTypeFilter}
+            onChange={e => setEmploymentTypeFilter(e.target.value)}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: `1px solid ${employmentTypeFilter !== 'all' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+              fontSize: 'var(--font-size-xs)',
+              color: employmentTypeFilter !== 'all' ? 'var(--brand-primary)' : 'var(--text-primary)',
+              background: employmentTypeFilter !== 'all' ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+              cursor: 'pointer',
+            }}
+            aria-label="Filter by employment type"
+          >
+            <option value="all">All Types</option>
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
+          </select>
+
+          {/* Clear filter chip */}
+          {(employmentTypeFilter !== 'all' || search) && (
+            <button
+              onClick={() => { setEmploymentTypeFilter('all'); setSearch(''); }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 500,
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-white)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={11} /> Clear
+            </button>
+          )}
+
           {/* View Mode Toggle */}
           <div
             style={{

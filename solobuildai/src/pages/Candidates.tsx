@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Users, Download, CheckCircle2,
-  Filter
+  Filter, X
 } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Button } from '../components/ui/Button';
@@ -23,6 +23,7 @@ const Candidates: React.FC = () => {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [selectedHiringId, setSelectedHiringId] = useState<string>('all');
+  const [callStatusFilter, setCallStatusFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Drawer & Dialer states
@@ -94,12 +95,20 @@ const Candidates: React.FC = () => {
     const matchesHiring =
       selectedHiringId === 'all' ||
       c.hiringId === selectedHiringId;
+    // Call status filter: group by whether a call was made
+    const matchesCallStatus =
+      callStatusFilter === 'all' ||
+      (callStatusFilter === 'called' && !!c.callDuration) ||
+      (callStatusFilter === 'not_called' && !c.callDuration);
+    const q = search.toLowerCase();
     const matchesSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.hiringTitle || '').toLowerCase().includes(search.toLowerCase()) ||
+      c.name.toLowerCase().includes(q) ||
+      (c.hiringTitle || '').toLowerCase().includes(q) ||
+      (c.position || '').toLowerCase().includes(q) ||
       c.phone.includes(search) ||
-      (c.email || '').toLowerCase().includes(search.toLowerCase());
-    return matchesStatus && matchesHiring && matchesSearch;
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.location || '').toLowerCase().includes(q);
+    return matchesStatus && matchesHiring && matchesCallStatus && matchesSearch;
   });
 
   const columns: Column<Candidate>[] = [
@@ -196,45 +205,78 @@ const Candidates: React.FC = () => {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'space-between',
           gap: '14px',
           marginBottom: '16px',
           flexWrap: 'wrap',
         }}
       >
-        {/* Status Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Filter size={12} /> Status:
-          </span>
-          {['all', 'shortlisted', 'interested', 'connected', 'contacted', 'no_answer', 'added'].map(statusKey => (
-            <button
-              key={statusKey}
-              onClick={() => setActiveFilter(statusKey)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: 'var(--font-size-xs)',
-                fontWeight: 500,
-                border: '1px solid',
-                borderColor: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--border-default)',
-                background: activeFilter === statusKey ? 'var(--brand-primary-light)' : 'var(--bg-white)',
-                color: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
-            >
-              {statusKey === 'added' ? 'Queued' : statusKey.replace('_', ' ')}
-              {statusKey === 'all'
-                ? ` (${candidates.length})`
-                : ` (${candidates.filter(c => c.status === statusKey).length})`}
-            </button>
-          ))}
+        {/* Left: Status pills + Call status filter */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Screening status pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Filter size={12} /> Status:
+            </span>
+            {['all', 'shortlisted', 'interested', 'connected', 'contacted', 'no_answer', 'added'].map(statusKey => (
+              <button
+                key={statusKey}
+                onClick={() => setActiveFilter(statusKey)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--border-default)',
+                  background: activeFilter === statusKey ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                  color: activeFilter === statusKey ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {statusKey === 'added' ? 'Queued' : statusKey.replace('_', ' ')}
+                {statusKey === 'all'
+                  ? ` (${candidates.length})`
+                  : ` (${candidates.filter(c => c.status === statusKey).length})`}
+              </button>
+            ))}
+          </div>
+
+          {/* Call status filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Call:
+            </span>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'called', label: 'Called' },
+              { key: 'not_called', label: 'Not called yet' },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setCallStatusFilter(opt.key)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: callStatusFilter === opt.key ? 'var(--brand-primary)' : 'var(--border-default)',
+                  background: callStatusFilter === opt.key ? 'var(--brand-primary-light)' : 'var(--bg-white)',
+                  color: callStatusFilter === opt.key ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Hiring Campaign Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Right: Campaign filter + clear */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <select
             value={selectedHiringId}
             onChange={e => setSelectedHiringId(e.target.value)}
@@ -256,6 +298,33 @@ const Candidates: React.FC = () => {
               </option>
             ))}
           </select>
+
+          {/* Clear all filters chip — only show when any filter is active */}
+          {(activeFilter !== 'all' || selectedHiringId !== 'all' || callStatusFilter !== 'all' || search) && (
+            <button
+              onClick={() => {
+                setActiveFilter('all');
+                setSelectedHiringId('all');
+                setCallStatusFilter('all');
+                setSearch('');
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 500,
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-white)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={11} /> Clear filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -268,7 +337,7 @@ const Candidates: React.FC = () => {
         onSelectionChange={setSelectedIds}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by name, phone, or email…"
+        searchPlaceholder="Search by name, phone, email, role, or location…"
         onRowClick={handleOpenCandidate}
         batchActions={() => (
           <>
