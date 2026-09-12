@@ -16,6 +16,9 @@ import AIRecruiters from './pages/AIRecruiters';
 import Interviews from './pages/Interviews';
 import Activity from './pages/Activity';
 import Settings from './pages/Settings';
+import ScreeningReports from './pages/ScreeningReports';
+import ScreeningReportHiring from './pages/ScreeningReportHiring';
+import CandidateScreeningReport from './pages/CandidateScreeningReport';
 
 // Styles
 import './styles/global.css';
@@ -47,6 +50,9 @@ const App: React.FC = () => {
                     <Route path="/interviews" element={<Interviews />} />
                     <Route path="/activity" element={<Activity />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/screening-reports" element={<ScreeningReports />} />
+                    <Route path="/screening-reports/:hiringId" element={<ScreeningReportHiring />} />
+                    <Route path="/screening-reports/:hiringId/candidate/:candidateId" element={<CandidateScreeningReport />} />
                   </Routes>
                 </Layout>
               }

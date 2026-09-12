@@ -2,14 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Phone, Mail, MapPin, Briefcase,
-  Calendar, CheckCircle2, XCircle, Play, Pause, RotateCcw, Clock
+  Calendar, CheckCircle2, XCircle, Play, Pause, RotateCcw, Clock, FileSearch
 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { CandidateStatusBadge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { DialerModal } from '../components/product/DialerModal';
+import { ScheduleInterviewModal } from '../components/product/ScheduleInterviewModal';
+import { CapabilityMap } from '../components/product/CapabilityMap';
 import { useAppStore, useCandidate } from '../store/appStore';
+import { screeningReportService } from '../services/screeningReportService';
 import { useToast } from '../components/ui/Toast';
 
 const CandidateDetail: React.FC = () => {
@@ -28,6 +31,8 @@ const CandidateDetail: React.FC = () => {
 
   // Dialer modal
   const [dialerOpen, setDialerOpen] = useState(false);
+  // Schedule interview modal
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   useEffect(() => {
     if (isPlaying) {
@@ -151,7 +156,7 @@ const CandidateDetail: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Button
               variant="secondary"
               icon={<Phone size={14} />}
@@ -166,6 +171,15 @@ const CandidateDetail: React.FC = () => {
                 onClick={handleShortlist}
               >
                 Shortlist
+              </Button>
+            )}
+            {candidate.hiringId && (
+              <Button
+                variant="outline"
+                icon={<FileSearch size={14} />}
+                onClick={() => navigate(`/screening-reports/${candidate.hiringId}/candidate/${candidate.id}`)}
+              >
+                Screening Report
               </Button>
             )}
           </div>
@@ -208,7 +222,7 @@ const CandidateDetail: React.FC = () => {
                 size="sm"
                 fullWidth
                 icon={<Calendar size={14} />}
-                onClick={() => showToast(`Interview invite queued for ${candidate.name}`, 'success')}
+                onClick={() => setScheduleOpen(true)}
               >
                 Schedule Interview
               </Button>
@@ -350,11 +364,106 @@ const CandidateDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Capability Snapshot + View Full Report CTA ── */}
+      {screeningReportService.isReportAvailable(candidate) && (() => {
+        const report = screeningReportService.getReport(candidate);
+        const labelStyle = screeningReportService.hireLabelStyle(report.overallRecommendation.label);
+        const callComplete = report.callAssessment.complete;
+        return (
+          <div style={{ maxWidth: '840px', marginTop: '4px' }}>
+            <div className="table-container" style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    AI Assessment Summary
+                  </span>
+                  {callComplete && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                      <span style={{
+                        fontSize: 'var(--font-size-lg)', fontWeight: 800, color: labelStyle.text,
+                      }}>
+                        {report.overallRecommendation.label === 'strong_hire' ? '★ Strong Hire'
+                          : report.overallRecommendation.label === 'hire' ? '✓ Hire'
+                          : report.overallRecommendation.label === 'consider' ? '~ Consider'
+                          : '✗ No Hire'}
+                      </span>
+                      <span style={{
+                        fontSize: 'var(--font-size-sm)', fontWeight: 700,
+                        padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                        background: labelStyle.bg, color: labelStyle.text,
+                        border: `1px solid ${labelStyle.border}`,
+                      }}>
+                        {report.overallRecommendation.score} / 10
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {candidate.hiringId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<FileSearch size={13} />}
+                    onClick={() => navigate(`/screening-reports/${candidate.hiringId}/candidate/${candidate.id}`)}
+                  >
+                    View Full Screening Report
+                  </Button>
+                )}
+              </div>
+
+              {/* Compact capability map */}
+              <CapabilityMap
+                competencies={report.capabilityAnalysis.competencies}
+                totalWeighted={report.capabilityAnalysis.totalWeighted}
+                compact
+              />
+
+              {/* Top strengths */}
+              {callComplete && report.overallRecommendation.strengths.length > 0 && (
+                <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <p style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--status-success-text)', marginBottom: '6px' }}>
+                      Top Strengths
+                    </p>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {report.overallRecommendation.strengths.slice(0, 3).map(s => (
+                        <li key={s} style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', display: 'flex', gap: '5px' }}>
+                          <span style={{ color: 'var(--status-success-text)' }}>·</span>{s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {report.overallRecommendation.concerns.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--status-warning-text)', marginBottom: '6px' }}>
+                        Potential Concerns
+                      </p>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {report.overallRecommendation.concerns.slice(0, 3).map(c => (
+                          <li key={c} style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', display: 'flex', gap: '5px' }}>
+                            <span style={{ color: 'var(--status-warning-text)' }}>·</span>{c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <DialerModal
         open={dialerOpen}
         initialPhone={candidate.phone}
         initialCandidateName={candidate.name}
         onClose={() => setDialerOpen(false)}
+      />
+
+      <ScheduleInterviewModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        candidate={candidate}
       />
     </div>
   );

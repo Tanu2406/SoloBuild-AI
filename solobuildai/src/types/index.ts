@@ -95,6 +95,11 @@ export interface Candidate {
   missingRequirements?: string[];
   aiRecommendation?: string;
   includedInCallList?: boolean;
+  // Call assessment fields (post-call)
+  callAssessmentScore?: number;          // 0-10
+  callAssessmentLabel?: AIHireLabel;     // overall recommendation label
+  callAssessmentConfidence?: 'high' | 'medium' | 'low';
+  callAssessmentComplete?: boolean;      // true only after call + analysis done
 }
 
 // ——— AI Recruiter ———
@@ -223,3 +228,103 @@ export interface CreateRecruiterForm {
   voice: string;
   interviewInstructions: string;
 }
+
+// ============================================================
+// Screening Report Domain Types
+// ============================================================
+
+export type AIHireLabel = 'strong_hire' | 'hire' | 'consider' | 'no_hire';
+export type StrengthLevel = 'strong' | 'moderate' | 'weak' | 'not_evaluated';
+export type CompetencyImportance = 'core' | 'nice_to_have';
+export type EvidenceSource = 'resume' | 'call';
+
+// ——— Competency (for Capability Map) ———
+export interface Competency {
+  name: string;
+  score: number;               // 0-100
+  importance: CompetencyImportance;
+  strength: StrengthLevel;
+  notes?: string;
+}
+
+// ——— Skill Assessment (for Skills Breakdown) ———
+export interface SkillAssessment {
+  name: string;
+  score: number;               // 0-10
+  strength: StrengthLevel;
+  source: EvidenceSource;      // resume = inferred, call = demonstrated
+}
+
+// ——— Skill Group (for Skills Breakdown) ———
+export interface SkillGroup {
+  category: string;            // e.g. "Interpersonal", "Cognitive", "Technical"
+  skills: SkillAssessment[];
+}
+
+// ——— Call Dimension (for Dimension Scorecard) ———
+export interface CallDimension {
+  name: string;
+  score: number;               // 0-10
+  maxScore: number;            // always 10
+  notes?: string;
+  verifiedGap?: string;        // evidence of a specific gap found
+}
+
+// ——— Evidence Item ———
+export interface EvidenceItem {
+  source: EvidenceSource;
+  label: string;
+  detail: string;
+}
+
+// ——— Resume Screening Report (Section 1) ———
+export interface ResumeScreeningReport {
+  matchScore: number;                  // 0-100
+  compatibility: 'compatible' | 'not_compatible';
+  resumeLabel: string;                 // "Strong Match" | "Moderate Match" | "Not a Match"
+  strongMatches: string[];
+  missingRequirements: string[];
+  resumeSummary: string;               // one-paragraph narrative
+  evidence: EvidenceItem[];
+}
+
+// ——— Call Assessment Report (Section 2) ———
+export interface CallAssessmentReport {
+  complete: boolean;                   // false = call hasn't happened or analysis pending
+  overallScore: number;                // 0-10
+  label: AIHireLabel;
+  confidence: 'high' | 'medium' | 'low';
+  signalCount: number;                 // number of signals extracted from conversation
+  callDuration: string;
+  strengths: string[];
+  concerns: string[];
+  recommendedNextStep: string;
+  dimensions: CallDimension[];
+  evidence: EvidenceItem[];
+}
+
+// ——— Capability Analysis ———
+export interface CapabilityAnalysis {
+  competencies: Competency[];
+  totalWeighted: number;               // e.g. "6 / 6 weighted competencies"
+  radarSummary: string;                // AI narrative of radar chart
+  skillGroups: SkillGroup[];
+}
+
+// ——— Full Screening Report (aggregated) ———
+export interface CandidateScreeningReportData {
+  candidateId: string;
+  generatedAt: string;                 // ISO
+  resumeScreening: ResumeScreeningReport;
+  callAssessment: CallAssessmentReport;
+  capabilityAnalysis: CapabilityAnalysis;
+  overallRecommendation: {
+    label: AIHireLabel;
+    score: number;                     // 0-10
+    summary: string;
+    strengths: string[];
+    concerns: string[];
+    recommendedNextStep: string;
+  };
+}
+

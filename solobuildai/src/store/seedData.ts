@@ -4,6 +4,7 @@
 
 import type { AppState } from './appStore';
 import type { Hiring, Candidate, AIRecruiter, Interview } from '../types';
+import type { AIHireLabel } from '../types';
 
 const recruiters: AIRecruiter[] = [
   {
@@ -57,6 +58,10 @@ const candidates: Candidate[] = [
     lastActivity: '2 min ago', lastActivityAt: new Date(Date.now() - 2 * 60000).toISOString(),
     callDuration: '6m 24s', callOutcome: 'Interested',
     aiSummary: 'Candidate has 3 years of sales experience and is available to join within 30 days. Strong communication skills, currently earning ₹5.5L. Open to negotiation.',
+    callAssessmentComplete: true,
+    callAssessmentScore: 7.4,
+    callAssessmentLabel: 'hire' as AIHireLabel,
+    callAssessmentConfidence: 'high',
   },
   {
     id: 'c2', name: 'Priya Patil', phone: '+91 87654 32109', email: 'priya.patil@email.com',
@@ -87,6 +92,10 @@ const candidates: Candidate[] = [
     lastActivity: '14 min ago', lastActivityAt: new Date(Date.now() - 14 * 60000).toISOString(),
     callDuration: '8m 12s', callOutcome: 'Shortlisted',
     aiSummary: 'Highly experienced candidate with 5 years in B2B sales. Currently at ₹8L, targeting ₹10L. Available immediately. Excellent fit for the role.',
+    callAssessmentComplete: true,
+    callAssessmentScore: 9.1,
+    callAssessmentLabel: 'strong_hire' as AIHireLabel,
+    callAssessmentConfidence: 'high',
   },
   {
     id: 'c4', name: 'Neha Singh', phone: '+91 65432 10987', email: 'neha.singh@email.com',
@@ -103,6 +112,10 @@ const candidates: Candidate[] = [
     lastActivity: '32 min ago', lastActivityAt: new Date(Date.now() - 32 * 60000).toISOString(),
     callDuration: '5m 40s', callOutcome: 'Interested',
     aiSummary: '4 years React experience with strong TypeScript skills. Currently working remotely. Open to hybrid work. Available in 2 months.',
+    callAssessmentComplete: true,
+    callAssessmentScore: 7.8,
+    callAssessmentLabel: 'hire' as AIHireLabel,
+    callAssessmentConfidence: 'high',
   },
   {
     id: 'c5', name: 'Vikram Joshi', phone: '+91 54321 09876', email: 'vikram.joshi@email.com',
@@ -119,6 +132,10 @@ const candidates: Candidate[] = [
     lastActivity: '1 hr ago', lastActivityAt: new Date(Date.now() - 60 * 60000).toISOString(),
     callDuration: '9m 05s', callOutcome: 'Shortlisted',
     aiSummary: 'Senior developer with 6 years experience, strong portfolio. Has led teams of 3–4. Salary expectation ₹18L. Immediate joiner.',
+    callAssessmentComplete: true,
+    callAssessmentScore: 9.4,
+    callAssessmentLabel: 'strong_hire' as AIHireLabel,
+    callAssessmentConfidence: 'high',
   },
   {
     id: 'c6', name: 'Sunita Reddy', phone: '+91 43210 98765', email: 'sunita.reddy@email.com',
@@ -224,6 +241,10 @@ const candidates: Candidate[] = [
     lastActivity: '7 hr ago', lastActivityAt: new Date(Date.now() - 420 * 60000).toISOString(),
     callDuration: '7m 30s', callOutcome: 'Interested',
     aiSummary: 'Experienced HR professional with 6 years in talent acquisition. Available within 45 days. Salary expectations within budget.',
+    callAssessmentComplete: true,
+    callAssessmentScore: 7.2,
+    callAssessmentLabel: 'hire' as AIHireLabel,
+    callAssessmentConfidence: 'medium',
   },
 ];
 

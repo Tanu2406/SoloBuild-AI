@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Pause, Play, MapPin, Calendar,
   Download, Sparkles, CheckCircle2,
-  Filter, Phone, Users, AlertTriangle,
+  Filter, Phone, Users, AlertTriangle, FileSearch,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
@@ -290,6 +290,10 @@ const HiringWorkspace: React.FC = () => {
               Schedule
             </Button>
           )}
+          <Button variant="ghost" size="sm" icon={<FileSearch size={12} />}
+            onClick={() => navigate(`/screening-reports/${hiring.id}/candidate/${c.id}`)}>
+            Report
+          </Button>
         </div>
       ),
     },
@@ -489,6 +493,10 @@ const HiringWorkspace: React.FC = () => {
                 <Button variant="outline" size="sm" fullWidth icon={<CheckCircle2 size={14} />}
                   onClick={() => setActiveTab('results')}>
                   Review Shortlist ({hiring.shortlisted})
+                </Button>
+                <Button variant="outline" size="sm" fullWidth icon={<FileSearch size={14} />}
+                  onClick={() => navigate(`/screening-reports/${hiring.id}`)}>
+                  Screening Reports
                 </Button>
               </div>
             </div>

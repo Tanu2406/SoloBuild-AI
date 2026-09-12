@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   CalendarDays,
+  FileSearch,
 } from 'lucide-react';
 import { useHirings, useCandidates, useInterviews } from '../../store/appStore';
 
@@ -20,12 +21,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/',            label: 'Home',          icon: <Home         size={18} strokeWidth={1.75} /> },
-  { path: '/hiring',      label: 'Hiring',        icon: <Briefcase    size={18} strokeWidth={1.75} /> },
-  { path: '/candidates',  label: 'Candidates',    icon: <Users        size={18} strokeWidth={1.75} /> },
-  { path: '/recruiters',  label: 'AI Recruiters', icon: <Bot          size={18} strokeWidth={1.75} /> },
-  { path: '/interviews',  label: 'Interviews',    icon: <CalendarDays size={18} strokeWidth={1.75} /> },
-  { path: '/activity',    label: 'Activity',      icon: <Activity     size={18} strokeWidth={1.75} /> },
+  { path: '/',                  label: 'Home',              icon: <Home         size={18} strokeWidth={1.75} /> },
+  { path: '/hiring',            label: 'Hiring',            icon: <Briefcase    size={18} strokeWidth={1.75} /> },
+  { path: '/candidates',        label: 'Candidates',        icon: <Users        size={18} strokeWidth={1.75} /> },
+  { path: '/screening-reports', label: 'Screening Reports', icon: <FileSearch   size={18} strokeWidth={1.75} /> },
+  { path: '/recruiters',        label: 'AI Recruiters',     icon: <Bot          size={18} strokeWidth={1.75} /> },
+  { path: '/interviews',        label: 'Interviews',        icon: <CalendarDays size={18} strokeWidth={1.75} /> },
+  { path: '/activity',          label: 'Activity',          icon: <Activity     size={18} strokeWidth={1.75} /> },
 ];
 
 const bottomItems: NavItem[] = [
@@ -41,6 +43,11 @@ export const Sidebar: React.FC = () => {
   const isCalling = hirings.some(h => h.status === 'calling');
   const candidateCount = candidates.length;
   const upcomingInterviewCount = interviews.filter(i => i.status === 'upcoming').length;
+  const screeningNeedsReview = candidates.filter(c =>
+    c.callAssessmentComplete &&
+    ['interested', 'connected', 'shortlisted'].includes(c.status) &&
+    !['interview_scheduled', 'interview_completed', 'hired'].includes(c.status)
+  ).length;
 
   return (
     <>
@@ -89,6 +96,7 @@ export const Sidebar: React.FC = () => {
               const showCallingBadge = item.path === '/hiring' && isCalling;
               const showCandidateCount = item.path === '/candidates' && candidateCount > 0;
               const showInterviewCount = item.path === '/interviews' && upcomingInterviewCount > 0;
+              const showScreeningReview = item.path === '/screening-reports' && screeningNeedsReview > 0;
 
               return (
                 <NavLink
@@ -140,6 +148,22 @@ export const Sidebar: React.FC = () => {
                       }}
                     >
                       {upcomingInterviewCount}
+                    </span>
+                  )}
+                  {showScreeningReview && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--status-warning-bg)',
+                        color: 'var(--status-warning-text)',
+                        fontWeight: 700,
+                        border: '1px solid var(--status-warning-border)',
+                      }}
+                      title="Candidates need review"
+                    >
+                      {screeningNeedsReview}
                     </span>
                   )}
                 </NavLink>

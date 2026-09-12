@@ -420,6 +420,18 @@ const Home: React.FC = () => {
                           >
                             Inspect
                           </Button>
+                          {cand.hiringId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/screening-reports/${cand.hiringId}/candidate/${cand.id}`);
+                              }}
+                            >
+                              Report
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
