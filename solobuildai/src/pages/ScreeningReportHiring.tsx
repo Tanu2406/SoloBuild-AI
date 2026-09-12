@@ -15,7 +15,7 @@ import {
 import { Avatar } from '../components/ui/Avatar';
 import { CandidateStatusBadge } from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { useHiring, useHiringCandidates } from '../store/appStore';
+import { useHiring, useHiringCandidates, useAppStore } from '../store/appStore';
 import { screeningReportService } from '../services/screeningReportService';
 import type { Candidate } from '../types';
 
@@ -74,6 +74,7 @@ function callStatusText(c: Candidate): string {
 const ScreeningReportHiring: React.FC = () => {
   const { hiringId } = useParams<{ hiringId: string }>();
   const navigate = useNavigate();
+  const { dispatch } = useAppStore();
 
   const hiring = useHiring(hiringId ?? '');
   const candidates = useHiringCandidates(hiringId ?? '');
@@ -271,7 +272,7 @@ const ScreeningReportHiring: React.FC = () => {
       {/* ── Column headers ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 40px',
+        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 32px 40px',
         gap: '12px',
         padding: '8px 16px',
         fontSize: 'var(--font-size-xs)', fontWeight: 700,
@@ -282,6 +283,10 @@ const ScreeningReportHiring: React.FC = () => {
         <span>Call Assessment</span>
         <span>Stage</span>
         <span>Recommendation</span>
+        <span title="Liked Profile" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <Star size={11} />
+          <span>Liked</span>
+        </span>
         <span />
       </div>
 
@@ -304,6 +309,7 @@ const ScreeningReportHiring: React.FC = () => {
               candidate={c}
               hiringId={hiring.id}
               onOpen={() => navigate(`/screening-reports/${hiring.id}/candidate/${c.id}`)}
+              onToggleFavorite={() => dispatch({ type: 'TOGGLE_FAVORITE', payload: c.id })}
             />
           ))}
         </div>
@@ -317,7 +323,8 @@ const CandidateReportRow: React.FC<{
   candidate: Candidate;
   hiringId: string;
   onOpen: () => void;
-}> = ({ candidate: c, onOpen }) => {
+  onToggleFavorite: () => void;
+}> = ({ candidate: c, onOpen, onToggleFavorite }) => {
   const resumeInfo = resumeMatchLabel(c.matchScore);
   const callInfo = callStatusInfo(c);
   const callText = callStatusText(c);
@@ -340,7 +347,7 @@ const CandidateReportRow: React.FC<{
       className="table-container"
       style={{
         display: 'grid',
-        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 40px',
+        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 32px 40px',
         gap: '12px',
         padding: '13px 16px',
         alignItems: 'center',
@@ -438,6 +445,24 @@ const CandidateReportRow: React.FC<{
             )}
           </span>
         )}
+      </div>
+
+      {/* Star / Favourite */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={e => { e.stopPropagation(); onToggleFavorite(); }}
+          title={c.isFavorite ? 'Remove from favourites' : 'Mark as favourite'}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '2px', display: 'flex', alignItems: 'center',
+            color: c.isFavorite ? '#f59e0b' : 'var(--text-muted)',
+            transition: 'color 120ms',
+          }}
+          onMouseEnter={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24'; }}
+          onMouseLeave={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+        >
+          <Star size={15} fill={c.isFavorite ? '#f59e0b' : 'none'} strokeWidth={1.75} />
+        </button>
       </div>
 
       {/* Arrow */}

@@ -39,6 +39,7 @@ type Action =
   | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
   | { type: 'SCHEDULE_INTERVIEW'; payload: Interview }
   | { type: 'UPDATE_INTERVIEW'; payload: { id: string; updates: Partial<Interview> } }
+  | { type: 'TOGGLE_FAVORITE'; payload: string }   // candidateId
   | { type: 'RESET_TO_SEED' };
 
 // ——— Derived helpers ———
@@ -165,6 +166,13 @@ function reducer(state: AppState, action: Action): AppState {
             : i
         ),
       };
+
+    case 'TOGGLE_FAVORITE': {
+      const candidates = state.candidates.map(c =>
+        c.id === action.payload ? { ...c, isFavorite: !c.isFavorite } : c
+      );
+      return { ...state, candidates };
+    }
 
     default:
       return state;

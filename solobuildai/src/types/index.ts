@@ -100,6 +100,7 @@ export interface Candidate {
   callAssessmentLabel?: AIHireLabel;     // overall recommendation label
   callAssessmentConfidence?: 'high' | 'medium' | 'low';
   callAssessmentComplete?: boolean;      // true only after call + analysis done
+  isFavorite?: boolean;                  // HR-starred candidate
 }
 
 // ——— AI Recruiter ———

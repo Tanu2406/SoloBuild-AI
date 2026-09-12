@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Users, Download, CheckCircle2,
-  Filter, X
+  Filter, X, Star
 } from 'lucide-react';
 import { PageHeader } from '../components/ui/Layout';
 import { Button } from '../components/ui/Button';
@@ -90,12 +90,12 @@ const Candidates: React.FC = () => {
   // Filtering
   const filtered = candidates.filter(c => {
     const matchesStatus =
-      activeFilter === 'all' ||
-      c.status === activeFilter;
+      activeFilter === 'liked'
+        ? !!c.isFavorite
+        : activeFilter === 'all' || c.status === activeFilter;
     const matchesHiring =
       selectedHiringId === 'all' ||
       c.hiringId === selectedHiringId;
-    // Call status filter: group by whether a call was made
     const matchesCallStatus =
       callStatusFilter === 'all' ||
       (callStatusFilter === 'called' && !!c.callDuration) ||
@@ -163,6 +163,26 @@ const Candidates: React.FC = () => {
         <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
           {c.lastActivity || '—'}
         </span>
+      ),
+    },
+    {
+      key: 'isFavorite',
+      header: 'Liked Profile',
+      render: (c: Candidate) => (
+        <button
+          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', payload: c.id }); }}
+          title={c.isFavorite ? 'Remove from liked profiles' : 'Mark as liked profile'}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '2px', display: 'flex', alignItems: 'center',
+            color: c.isFavorite ? '#f59e0b' : 'var(--text-muted)',
+            transition: 'color 120ms',
+          }}
+          onMouseEnter={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24'; }}
+          onMouseLeave={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+        >
+          <Star size={15} fill={c.isFavorite ? '#f59e0b' : 'none'} strokeWidth={1.75} />
+        </button>
       ),
     },
     {
@@ -242,6 +262,30 @@ const Candidates: React.FC = () => {
                   : ` (${candidates.filter(c => c.status === statusKey).length})`}
               </button>
             ))}
+            {/* Liked Profiles pill */}
+            <button
+              onClick={() => setActiveFilter('liked')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 600,
+                border: '1px solid',
+                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                borderColor: activeFilter === 'liked' ? '#f59e0b' : 'var(--border-default)',
+                background: activeFilter === 'liked' ? '#fffbeb' : 'var(--bg-white)',
+                color: activeFilter === 'liked' ? '#b45309' : 'var(--text-secondary)',
+              }}
+            >
+              <Star
+                size={11}
+                fill={activeFilter === 'liked' ? '#f59e0b' : 'none'}
+                strokeWidth={1.75}
+                style={{ color: activeFilter === 'liked' ? '#f59e0b' : 'var(--text-muted)' }}
+              />
+              Liked Profiles ({candidates.filter(c => c.isFavorite).length})
+            </button>
           </div>
 
           {/* Call status filter */}

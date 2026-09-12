@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Pause, Play, MapPin, Calendar,
   Download, Sparkles, CheckCircle2,
-  Filter, Phone, Users, AlertTriangle, FileSearch,
+  Filter, Phone, Users, AlertTriangle, FileSearch, Star,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
@@ -222,7 +222,10 @@ const HiringWorkspace: React.FC = () => {
   };
 
   const filteredCandidates = candidates.filter(c => {
-    const matchesFilter = candidateFilter === 'all' || c.status === candidateFilter;
+    const matchesFilter =
+      candidateFilter === 'liked'
+        ? !!c.isFavorite
+        : candidateFilter === 'all' || c.status === candidateFilter;
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.phone.includes(searchQuery) ||
@@ -280,6 +283,25 @@ const HiringWorkspace: React.FC = () => {
       ),
     },
     {
+      key: 'isFavorite', header: 'Liked Profile',
+      render: (c: Candidate) => (
+        <button
+          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', payload: c.id }); }}
+          title={c.isFavorite ? 'Remove from favourites' : 'Mark as favourite'}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '2px', display: 'flex', alignItems: 'center',
+            color: c.isFavorite ? '#f59e0b' : 'var(--text-muted)',
+            transition: 'color 120ms',
+          }}
+          onMouseEnter={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24'; }}
+          onMouseLeave={e => { if (!c.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+        >
+          <Star size={15} fill={c.isFavorite ? '#f59e0b' : 'none'} strokeWidth={1.75} />
+        </button>
+      ),
+    },
+    {
       key: 'actions', header: 'Action', align: 'right',
       render: (c: Candidate) => (
         <div style={{ display: 'inline-flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
@@ -327,6 +349,29 @@ const HiringWorkspace: React.FC = () => {
           {call.aiSummary || '—'}
         </span>
       ),
+    },
+    {
+      key: 'isFavorite', header: 'Liked Profile',
+      render: (call: Call) => {
+        const cand = candidates.find(c => c.id === call.candidateId);
+        if (!cand) return null;
+        return (
+          <button
+            onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', payload: cand.id }); }}
+            title={cand.isFavorite ? 'Remove from favourites' : 'Mark as favourite'}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '2px', display: 'flex', alignItems: 'center',
+              color: cand.isFavorite ? '#f59e0b' : 'var(--text-muted)',
+              transition: 'color 120ms',
+            }}
+            onMouseEnter={e => { if (!cand.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = '#fbbf24'; }}
+            onMouseLeave={e => { if (!cand.isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+          >
+            <Star size={15} fill={cand.isFavorite ? '#f59e0b' : 'none'} strokeWidth={1.75} />
+          </button>
+        );
+      },
     },
     {
       key: 'actions', header: '', align: 'right',
@@ -700,6 +745,21 @@ const HiringWorkspace: React.FC = () => {
                 {fk === 'all' ? ` (${candidates.length})` : ` (${candidates.filter(c => c.status === fk).length})`}
               </button>
             ))}
+            {/* Liked Profiles tab */}
+            <button
+              onClick={() => setCandidateFilter('liked')}
+              style={{
+                padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 'var(--font-size-xs)', fontWeight: 600,
+                border: '1px solid', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                borderColor: candidateFilter === 'liked' ? '#f59e0b' : 'var(--border-default)',
+                background: candidateFilter === 'liked' ? '#fffbeb' : 'var(--bg-white)',
+                color: candidateFilter === 'liked' ? '#b45309' : 'var(--text-secondary)',
+              }}
+            >
+              <Star size={11} fill={candidateFilter === 'liked' ? '#f59e0b' : 'none'} strokeWidth={1.75} style={{ color: candidateFilter === 'liked' ? '#f59e0b' : 'var(--text-muted)' }} />
+              Liked Profiles ({candidates.filter(c => c.isFavorite).length})
+            </button>
           </div>
           <DataTable
             columns={candidateColumns}
