@@ -9,12 +9,13 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { HiringStatusBadge } from '../components/ui/Badge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Avatar } from '../components/ui/Avatar';
+import Candidates from './Candidates';
 import { useHirings, useRecruiters, useAppStore } from '../store/appStore';
 import { callSimulationService } from '../services/callSimulationService';
 import { useToast } from '../components/ui/Toast';
 import type { Hiring } from '../types';
 
-type TabId = 'all' | 'active' | 'draft' | 'completed';
+type TabId = 'all' | 'active' | 'draft' | 'completed' | 'candidates';
 
 const HiringPage: React.FC = () => {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ const HiringPage: React.FC = () => {
     { id: 'active', label: 'Active Screening', count: hirings.filter(h => ['calling', 'paused', 'ready'].includes(h.status)).length },
     { id: 'draft', label: 'Drafts', count: hirings.filter(h => h.status === 'draft').length },
     { id: 'completed', label: 'Completed', count: hirings.filter(h => h.status === 'completed').length },
+    { id: 'candidates', label: 'Candidates' },
   ];
 
   const handlePauseCalling = (hiring: Hiring) => {
@@ -187,7 +189,7 @@ const HiringPage: React.FC = () => {
       >
         <Tabs tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as TabId)} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {activeTab !== 'candidates' && <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Employment type filter */}
           <select
             value={employmentTypeFilter}
@@ -275,10 +277,12 @@ const HiringPage: React.FC = () => {
               <LayoutGrid size={16} />
             </button>
           </div>
-        </div>
+        </div>}
       </div>
 
-      {viewMode === 'table' ? (
+      {activeTab === 'candidates' ? (
+        <Candidates embedded />
+      ) : viewMode === 'table' ? (
         <DataTable
           columns={columns}
           data={filtered}

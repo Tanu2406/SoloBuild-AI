@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import {
   Home,
   Briefcase,
-  Users,
   Bot,
   Activity,
   Settings,
@@ -11,6 +10,8 @@ import {
   X,
   CalendarDays,
   FileSearch,
+  Plus,
+  MessageSquare,
 } from 'lucide-react';
 import { useHirings, useCandidates, useInterviews } from '../../store/appStore';
 
@@ -23,7 +24,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/',                  label: 'Home',              icon: <Home         size={18} strokeWidth={1.75} /> },
   { path: '/hiring',            label: 'Hiring',            icon: <Briefcase    size={18} strokeWidth={1.75} /> },
-  { path: '/candidates',        label: 'Candidates',        icon: <Users        size={18} strokeWidth={1.75} /> },
   { path: '/screening-reports', label: 'Screening Reports', icon: <FileSearch   size={18} strokeWidth={1.75} /> },
   { path: '/recruiters',        label: 'AI Recruiters',     icon: <Bot          size={18} strokeWidth={1.75} /> },
   { path: '/interviews',        label: 'Interviews',        icon: <CalendarDays size={18} strokeWidth={1.75} /> },
@@ -34,14 +34,24 @@ const bottomItems: NavItem[] = [
   { path: '/settings', label: 'Settings', icon: <Settings size={18} strokeWidth={1.75} /> },
 ];
 
-export const Sidebar: React.FC = () => {
+interface RecentChatSummary {
+  id: string;
+  title: string;
+}
+
+interface SidebarProps {
+  onNewChat: () => void;
+  onNavigate: () => void;
+  recentChats?: RecentChatSummary[];
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onNewChat, onNavigate, recentChats = [] }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const hirings = useHirings();
   const candidates = useCandidates();
   const interviews = useInterviews();
 
   const isCalling = hirings.some(h => h.status === 'calling');
-  const candidateCount = candidates.length;
   const upcomingInterviewCount = interviews.filter(i => i.status === 'upcoming').length;
   const screeningNeedsReview = candidates.filter(c =>
     c.callAssessmentComplete &&
@@ -94,7 +104,6 @@ export const Sidebar: React.FC = () => {
           <div className="sidebar__section">
             {navItems.map(item => {
               const showCallingBadge = item.path === '/hiring' && isCalling;
-              const showCandidateCount = item.path === '/candidates' && candidateCount > 0;
               const showInterviewCount = item.path === '/interviews' && upcomingInterviewCount > 0;
               const showScreeningReview = item.path === '/screening-reports' && screeningNeedsReview > 0;
 
@@ -106,7 +115,10 @@ export const Sidebar: React.FC = () => {
                   className={({ isActive }) =>
                     `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`
                   }
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    onNavigate();
+                    setMobileOpen(false);
+                  }}
                 >
                   <span className="sidebar__item-icon">{item.icon}</span>
                   <span className="sidebar__item-label">{item.label}</span>
@@ -121,20 +133,6 @@ export const Sidebar: React.FC = () => {
                       }}
                       title="AI Screening active"
                     />
-                  )}
-                  {showCandidateCount && (
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '1px 6px',
-                        borderRadius: 'var(--radius-full)',
-                        background: 'var(--bg-subtle)',
-                        color: 'var(--text-tertiary)',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {candidateCount}
-                    </span>
                   )}
                   {showInterviewCount && (
                     <span
@@ -170,6 +168,34 @@ export const Sidebar: React.FC = () => {
               );
             })}
           </div>
+          <button
+            type="button"
+            className="sidebar__item"
+            onClick={() => {
+              onNewChat();
+              setMobileOpen(false);
+            }}
+            style={{ width: '100%', border: 0, background: 'transparent', textAlign: 'left' }}
+          >
+            <span className="sidebar__item-icon" style={{ color: '#0066FF' }}>
+              <Plus size={18} strokeWidth={1.75} />
+            </span>
+            <span className="sidebar__item-label">New Chat</span>
+          </button>
+
+          <div className="sidebar__section" aria-label="Recent chats">
+            <p className="sidebar__section-label">Recent Chats</p>
+            {recentChats.length === 0 ? (
+              <p className="sidebar__empty-chats">No conversations yet</p>
+            ) : (
+              recentChats.map(chat => (
+                <div className="sidebar__item" key={chat.id}>
+                  <span className="sidebar__item-icon"><MessageSquare size={16} strokeWidth={1.75} /></span>
+                  <span className="sidebar__item-label">{chat.title}</span>
+                </div>
+              ))
+            )}
+          </div>
         </nav>
 
         <div className="sidebar__bottom">
@@ -180,7 +206,10 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) =>
                 `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`
               }
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                onNavigate();
+                setMobileOpen(false);
+              }}
             >
               <span className="sidebar__item-icon">{item.icon}</span>
               <span className="sidebar__item-label">{item.label}</span>

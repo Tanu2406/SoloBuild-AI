@@ -14,7 +14,7 @@ import { useAppStore, useCandidates, useHirings } from '../store/appStore';
 import { useToast } from '../components/ui/Toast';
 import type { Candidate } from '../types';
 
-const Candidates: React.FC = () => {
+const Candidates: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { dispatch } = useAppStore();
   const { showToast } = useToast();
   const candidates = useCandidates();
@@ -205,7 +205,7 @@ const Candidates: React.FC = () => {
   ];
 
   return (
-    <div className="page-content animate-fade-in">
+    <div className={embedded ? 'animate-fade-in' : 'page-content animate-fade-in'}>
       <PageHeader
         title="Candidate Directory"
         subtitle="Global directory of all candidate profiles across active and completed hirings."

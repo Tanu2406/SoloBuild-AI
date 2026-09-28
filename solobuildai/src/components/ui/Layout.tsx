@@ -3,6 +3,7 @@ import { Search, Bell, ChevronDown, Settings, LogOut, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { GlobalSearch } from './GlobalSearch';
+import { ChatMode } from './ChatMode';
 import { useInterviews, useActivity } from '../../store/appStore';
 
 // ─── Scope filter chips shown left of search ───
@@ -24,6 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [activeScope, setActiveScope] = useState('all');
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [chatMode, setChatMode] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -68,8 +70,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <div className={chatMode ? 'app-shell app-shell--chat' : 'app-shell'}>
+      <Sidebar onNewChat={() => setChatMode(true)} onNavigate={() => setChatMode(false)} />
       <div className="app-main-wrapper">
 
         {/* ══ TOPBAR ══ */}
@@ -206,7 +208,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <main className="app-main">
-          {children}
+          {chatMode ? <ChatMode /> : children}
         </main>
       </div>
 
