@@ -18,6 +18,24 @@ export const talentAcquisitionSolution: ChatSolution = {
   ],
 };
 
+export const salesSolution: ChatSolution = {
+  name: 'Sales / Lead Management',
+  tools: [
+    'Lead Pipeline',
+    'Company Research',
+    'Sales Activity',
+    'Lead Scoring',
+    'Campaign Performance',
+  ],
+  actions: [
+    'Show my hot leads',
+    'Which leads need follow-up?',
+    "Summarize today's sales activity",
+    'Show active campaigns',
+    'Which leads have the highest score?',
+  ],
+};
+
 export const talentAcquisitionDemoMessages: ChatMessageData[] = [
   {
     id: 'hr-user',

@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   Briefcase,
   Bot,
+  Users,
   Activity,
+  Building2,
+  CheckCircle2,
   Settings,
   Menu,
   X,
+  ChevronDown,
+  ChevronLeft,
   CalendarDays,
   FileSearch,
   Plus,
   MessageSquare,
+  Search,
+  Target,
+  UserPlus,
+  Megaphone,
 } from 'lucide-react';
 import { useHirings, useCandidates, useInterviews } from '../../store/appStore';
 
@@ -24,6 +33,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/',                  label: 'Home',              icon: <Home         size={18} strokeWidth={1.75} /> },
   { path: '/hiring',            label: 'Hiring',            icon: <Briefcase    size={18} strokeWidth={1.75} /> },
+  { path: '/candidates',        label: 'Candidates',        icon: <Users         size={18} strokeWidth={1.75} /> },
   { path: '/screening-reports', label: 'Screening Reports', icon: <FileSearch   size={18} strokeWidth={1.75} /> },
   { path: '/recruiters',        label: 'AI Recruiters',     icon: <Bot          size={18} strokeWidth={1.75} /> },
   { path: '/interviews',        label: 'Interviews',        icon: <CalendarDays size={18} strokeWidth={1.75} /> },
@@ -33,6 +43,60 @@ const navItems: NavItem[] = [
 const bottomItems: NavItem[] = [
   { path: '/settings', label: 'Settings', icon: <Settings size={18} strokeWidth={1.75} /> },
 ];
+
+const salesNavItems: NavItem[] = [
+  { path: '/sales/research', label: 'Lead Research', icon: <Search size={18} strokeWidth={1.75} /> },
+  { path: '/sales/enrichment', label: 'Lead Enrichment', icon: <Building2 size={18} strokeWidth={1.75} /> },
+  { path: '/sales/qualification', label: 'Lead Qualification', icon: <CheckCircle2 size={18} strokeWidth={1.75} /> },
+  { path: '/sales/scoring', label: 'Lead Scoring', icon: <Target size={18} strokeWidth={1.75} /> },
+  { path: '/sales/assignment', label: 'Lead Assignment', icon: <UserPlus size={18} strokeWidth={1.75} /> },
+  { path: '/sales/activity', label: 'Activity', icon: <Activity size={18} strokeWidth={1.75} /> },
+  { path: '/sales/campaigns', label: 'Sales Campaigns', icon: <Megaphone size={18} strokeWidth={1.75} /> },
+];
+
+const solutionGroups = [
+  {
+    id: 'hr',
+    label: 'HR Solutions',
+    items: [{ id: 'talent-acquisition', label: 'Talent Acquisition' }],
+  },
+  {
+    id: 'sales',
+    label: 'Sales',
+    items: [
+      { id: 'lead-management', label: 'Lead Management' },
+      { id: 'lead-qualification', label: 'Lead Qualification' },
+      { id: 'sales-outreach', label: 'Sales Outreach' },
+      { id: 'meeting-scheduling', label: 'Meeting & Scheduling' },
+      { id: 'opportunity-management', label: 'Opportunity Management' },
+      { id: 'sales-analytics', label: 'Sales Analytics' },
+    ],
+  },
+  {
+    id: 'support',
+    label: 'Customer Support',
+    items: [
+      { id: 'support-workflow', label: 'Ticket Management' },
+      { id: 'agent-assist', label: 'Agent Assist' },
+      { id: 'knowledge-resolution', label: 'Knowledge & Resolution' },
+      { id: 'escalation', label: 'Escalation' },
+      { id: 'customer-communication', label: 'Customer Communication' },
+      { id: 'support-analytics', label: 'Support Analytics' },
+    ],
+  },
+  {
+    id: 'it',
+    label: 'IT Solutions',
+    items: [
+      { id: 'it-support', label: 'IT Support' },
+      { id: 'service-operations', label: 'Service Operations' },
+      { id: 'email-automation', label: 'Email Automation' },
+    ],
+  },
+] as const;
+
+type SolutionGroupId = (typeof solutionGroups)[number]['id'];
+type SolutionSelection = { groupId: SolutionGroupId; itemId: string } | null;
 
 interface RecentChatSummary {
   id: string;
@@ -46,7 +110,19 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNewChat, onNavigate, recentChats = [] }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedSolutionGroups, setExpandedSolutionGroups] = useState<Record<SolutionGroupId, boolean>>({
+    hr: true,
+    sales: true,
+    support: true,
+    it: true,
+  });
+  const [selectedSolution, setSelectedSolution] = useState<SolutionSelection>(null);
+  const activeSolution: SolutionSelection = location.pathname.startsWith('/sales')
+    ? { groupId: 'sales', itemId: 'lead-management' }
+    : selectedSolution;
   const hirings = useHirings();
   const candidates = useCandidates();
   const interviews = useInterviews();
@@ -79,17 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNewChat, onNavigate, recentC
       <aside className={`sidebar ${mobileOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar__header">
           <div className="sidebar__logo">
-            <div className="sidebar__logo-mark">
-              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-                <rect width="32" height="32" rx="8" fill="var(--brand-primary)" />
-                <path d="M8 22L16 10L24 22" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M11 18H21" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="sidebar__logo-text">
-              <span className="sidebar__logo-name">SoloBuild</span>
-              <span className="sidebar__logo-ai">AI</span>
-            </div>
+            <img className="sidebar__logo-image" src="/images/solobuild-logo.png" alt="SoloBuild" />
           </div>
           <button
             className="sidebar-mobile-close"
@@ -196,6 +262,150 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNewChat, onNavigate, recentC
               ))
             )}
           </div>
+
+          <div className="sidebar__section sidebar__solutions" aria-label="Solutions">
+            <p className="sidebar__section-label">Solutions</p>
+            {activeSolution ? (
+              <>
+                <button
+                  type="button"
+                  className="sidebar__solutions-back"
+                  onClick={() => {
+                    setSelectedSolution(null);
+                    onNavigate();
+                    setMobileOpen(false);
+                    if (location.pathname.startsWith('/sales')) navigate('/');
+                  }}
+                >
+                  <ChevronLeft size={14} strokeWidth={1.75} />
+                  <span>All Solutions</span>
+                </button>
+                <p className="sidebar__solutions-context">
+                  {solutionGroups.find(group => group.id === activeSolution.groupId)?.label}
+                  {' / '}
+                  {solutionGroups
+                    .find(group => group.id === activeSolution.groupId)
+                    ?.items.find(item => item.id === activeSolution.itemId)?.label}
+                </p>
+                {activeSolution.groupId === 'hr' && activeSolution.itemId === 'talent-acquisition' ? (
+                  <div className="sidebar__section">
+                    {navItems.filter(item => item.path !== '/').map(item => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`
+                        }
+                        onClick={() => {
+                          onNavigate();
+                          setMobileOpen(false);
+                        }}
+                      >
+                        <span className="sidebar__item-icon">{item.icon}</span>
+                        <span className="sidebar__item-label">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : activeSolution.groupId === 'sales' && activeSolution.itemId === 'lead-management' ? (
+                  <div className="sidebar__section">
+                    {salesNavItems.map(item => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) => `sidebar__item ${isActive ? 'sidebar__item--active' : ''}`}
+                        onClick={() => {
+                          onNavigate();
+                          setMobileOpen(false);
+                        }}
+                      >
+                        <span className="sidebar__item-icon">{item.icon}</span>
+                        <span className="sidebar__item-label">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="sidebar__section">
+                    {solutionGroups
+                      .find(group => group.id === activeSolution.groupId)
+                      ?.items.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`sidebar__item sidebar__solution-item ${
+                            item.id === activeSolution.itemId ? 'sidebar__item--active' : ''
+                          }`}
+                          onClick={() => {
+                            onNavigate();
+                            setMobileOpen(false);
+                            setSelectedSolution({
+                              groupId: activeSolution.groupId,
+                              itemId: item.id,
+                            });
+                            if (activeSolution.groupId === 'sales' && item.id === 'lead-management') {
+                              navigate('/sales');
+                              setMobileOpen(false);
+                            } else if (activeSolution.groupId === 'hr' && item.id === 'talent-acquisition') {
+                              navigate('/');
+                              setMobileOpen(false);
+                            }
+                          }}
+                        >
+                          <span className="sidebar__item-label">{item.label}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              solutionGroups.map(group => (
+                <div className="sidebar__solution-group" key={group.id}>
+                  <button
+                    type="button"
+                    className="sidebar__solution-group-toggle"
+                    aria-expanded={expandedSolutionGroups[group.id]}
+                    onClick={() =>
+                      setExpandedSolutionGroups(current => ({
+                        ...current,
+                        [group.id]: !current[group.id],
+                      }))
+                    }
+                  >
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={1.75}
+                      className={expandedSolutionGroups[group.id] ? '' : 'sidebar__solution-chevron--collapsed'}
+                    />
+                    <span>{group.label}</span>
+                  </button>
+                  {expandedSolutionGroups[group.id] && (
+                    <div className="sidebar__solution-group-items">
+                      {group.items.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="sidebar__solution-item"
+                          onClick={() => {
+                            onNavigate();
+                            setSelectedSolution({ groupId: group.id, itemId: item.id });
+                            setMobileOpen(false);
+                            if (group.id === 'sales' && item.id === 'lead-management') {
+                              navigate('/sales');
+                              setMobileOpen(false);
+                            } else if (group.id === 'hr' && item.id === 'talent-acquisition') {
+                              navigate('/');
+                              setMobileOpen(false);
+                            }
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </nav>
 
         <div className="sidebar__bottom">
@@ -256,32 +466,18 @@ style.textContent = `
 .sidebar__logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  width: 100%;
 }
 
-.sidebar__logo-mark {
-  display: flex;
-  flex-shrink: 0;
-}
-
-.sidebar__logo-text {
-  display: flex;
-  align-items: baseline;
-  gap: 1px;
-}
-
-.sidebar__logo-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
-}
-
-.sidebar__logo-ai {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--brand-primary);
-  letter-spacing: -0.3px;
+.sidebar__logo-image {
+  display: block;
+  width: 130px;
+  max-width: 100%;
+  height: 24px;
+  margin: 10px 0;
+  object-fit: cover;
+  object-position: center;
 }
 
 .sidebar-mobile-close {
@@ -307,6 +503,75 @@ style.textContent = `
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.sidebar__solutions {
+  margin-top: 4px;
+}
+
+.sidebar__solution-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar__solution-group-toggle,
+.sidebar__solution-item,
+.sidebar__solutions-back {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--sidebar-item-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar__solution-group-toggle {
+  padding: 8px 10px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.sidebar__solution-group-toggle:hover,
+.sidebar__solution-item:hover,
+.sidebar__solutions-back:hover {
+  background: var(--sidebar-item-hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar__solution-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+.sidebar__solution-group-items {
+  display: flex;
+  flex-direction: column;
+  padding-left: 25px;
+}
+
+.sidebar__solution-item {
+  padding: 7px 10px;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.sidebar__solutions-context {
+  padding: 7px 10px;
+  color: var(--brand-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.sidebar__solutions-back {
+  padding: 6px 10px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
 }
 
 .sidebar__item {

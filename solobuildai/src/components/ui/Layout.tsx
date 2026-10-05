@@ -1,18 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, ChevronDown, Settings, LogOut, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { GlobalSearch } from './GlobalSearch';
 import { ChatMode } from './ChatMode';
 import { useInterviews, useActivity } from '../../store/appStore';
 
 // ─── Scope filter chips shown left of search ───
-const SCOPE_CHIPS = [
+type ScopeChip = { id: string; label: string; path?: string };
+
+const SCOPE_CHIPS: ScopeChip[] = [
   { id: 'all',        label: 'All' },
   { id: 'candidates', label: 'Candidates' },
   { id: 'hirings',    label: 'Hirings' },
   { id: 'interviews', label: 'Interviews' },
   { id: 'activity',   label: 'Activity' },
+];
+const SALES_SCOPE_CHIPS: ScopeChip[] = [
+  { id: 'all', label: 'All', path: '/sales' },
+  { id: 'leads', label: 'Leads', path: '/sales/research' },
+  { id: 'campaigns', label: 'Campaigns', path: '/sales/campaigns' },
+  { id: 'calls', label: 'Calls', path: '/sales/activity' },
+  { id: 'activities', label: 'Activities', path: '/sales/activity' },
 ];
 
 interface LayoutProps {
@@ -21,13 +30,26 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSales = location.pathname.startsWith('/sales');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeScope, setActiveScope] = useState('all');
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [chatMode, setChatMode] = useState(false);
+  const [newChatRequest, setNewChatRequest] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const scopeChips = isSales ? SALES_SCOPE_CHIPS : SCOPE_CHIPS;
+  const selectedScope = isSales
+    ? location.pathname === '/sales' || location.pathname === '/sales/'
+      ? 'all'
+      : location.pathname.includes('/campaigns')
+        ? 'campaigns'
+        : location.pathname.includes('/activity')
+          ? activeScope === 'calls' ? 'calls' : 'activities'
+          : 'leads'
+    : activeScope;
 
   const interviews = useInterviews();
   const activity = useActivity();
@@ -71,7 +93,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className={chatMode ? 'app-shell app-shell--chat' : 'app-shell'}>
-      <Sidebar onNewChat={() => setChatMode(true)} onNavigate={() => setChatMode(false)} />
+      <Sidebar
+        onNewChat={() => {
+          setChatMode(true);
+          setNewChatRequest(request => request + 1);
+        }}
+        onNavigate={() => setChatMode(false)}
+      />
       <div className="app-main-wrapper">
 
         {/* ══ TOPBAR ══ */}
@@ -80,11 +108,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* LEFT — scope filter chips */}
           <div className="app-topbar__left">
             <span className="app-topbar__scope-label">Search in:</span>
-            {SCOPE_CHIPS.map(chip => (
+            {scopeChips.map(chip => (
               <button
                 key={chip.id}
-                className={`app-topbar__chip ${activeScope === chip.id ? 'app-topbar__chip--active' : ''}`}
-                onClick={() => setActiveScope(chip.id)}
+                className={`app-topbar__chip ${selectedScope === chip.id ? 'app-topbar__chip--active' : ''}`}
+                onClick={() => {
+                  setActiveScope(chip.id);
+                  if (chip.path) navigate(chip.path);
+                }}
               >
                 {chip.label}
               </button>
@@ -100,7 +131,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               <Search size={14} className="app-topbar__search-icon" />
               <span className="app-topbar__search-label">
-                Search {activeScope === 'all' ? 'everything' : activeScope}…
+                Search {activeScope === 'all' ? (isSales ? 'sales' : 'everything') : activeScope}…
               </span>
               <span className="app-topbar__search-kbd">
                 <kbd>⌘</kbd><kbd>K</kbd>
@@ -208,7 +239,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <main className="app-main">
-          {chatMode ? <ChatMode /> : children}
+          {chatMode ? <ChatMode solutionContext={isSales ? 'sales' : 'talent'} newChatRequest={newChatRequest} /> : children}
         </main>
       </div>
 

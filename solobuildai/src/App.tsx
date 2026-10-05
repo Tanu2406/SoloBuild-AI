@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import ScreeningReports from './pages/ScreeningReports';
 import ScreeningReportHiring from './pages/ScreeningReportHiring';
 import CandidateScreeningReport from './pages/CandidateScreeningReport';
+import Sales from './pages/Sales';
 
 // Styles
 import './styles/global.css';
@@ -53,6 +54,7 @@ const App: React.FC = () => {
                     <Route path="/screening-reports" element={<ScreeningReports />} />
                     <Route path="/screening-reports/:hiringId" element={<ScreeningReportHiring />} />
                     <Route path="/screening-reports/:hiringId/candidate/:candidateId" element={<CandidateScreeningReport />} />
+                    <Route path="/sales/*" element={<Sales />} />
                   </Routes>
                 </Layout>
               }

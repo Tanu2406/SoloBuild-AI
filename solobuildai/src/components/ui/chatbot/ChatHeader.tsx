@@ -1,4 +1,4 @@
-export function ChatHeader() {
+export function ChatHeader({ subtitle = 'Talent Acquisition' }: { subtitle?: string }) {
   return (
     <header className="chatbot-header">
       <div className="chatbot-header__identity">
@@ -8,8 +8,8 @@ export function ChatHeader() {
           </svg>
         </div>
         <div className="chatbot-header__copy">
-          <p className="chatbot-header__title">SoloBuildAI Assistant</p>
-          <p className="chatbot-header__subtitle">Talent Acquisition</p>
+          <p className="chatbot-header__title">Rollo AI</p>
+          <p className="chatbot-header__subtitle">{subtitle}</p>
         </div>
       </div>
       <div className="chatbot-header__status" title="UI presentation only; this is not a live connection indicator">

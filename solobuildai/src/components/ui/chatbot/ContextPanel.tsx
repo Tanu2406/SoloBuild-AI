@@ -1,7 +1,13 @@
 import { ArrowIcon } from './Icon';
 import type { ChatSolution } from './types';
 
-export function ContextPanel({ solution }: { solution: ChatSolution }) {
+export function ContextPanel({
+  solution,
+  onAction,
+}: {
+  solution: ChatSolution;
+  onAction?: (action: string) => void;
+}) {
   return (
     <aside className="chatbot-context-panel" aria-label="Connected Tools and Suggested Actions">
       <div className="chatbot-context-panel__content">
@@ -20,7 +26,14 @@ export function ContextPanel({ solution }: { solution: ChatSolution }) {
           <p className="chatbot-context-panel__section-label">Suggested Actions</p>
           <div className="chatbot-context-panel__action-list">
             {solution.actions.map(action => (
-              <button className="chatbot-context-panel__action" type="button" key={action} disabled title="Unavailable until a chat service is connected">
+              <button
+                className="chatbot-context-panel__action"
+                type="button"
+                key={action}
+                disabled={!onAction}
+                title={onAction ? 'Ask the demo assistant' : 'Unavailable until a chat service is connected'}
+                onClick={() => onAction?.(action)}
+              >
                 <span>{action}</span>
                 <ArrowIcon className="chatbot-context-panel__action-icon" />
               </button>
