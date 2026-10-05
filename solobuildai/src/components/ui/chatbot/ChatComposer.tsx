@@ -8,7 +8,7 @@ export function ChatComposer({ disabled }: { disabled: boolean }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="m20.5 11.5-7.75 7.75a5 5 0 0 1-7.07-7.07l8.13-8.13a3.5 3.5 0 1 1 4.95 4.95l-8.13 8.13a2 2 0 0 1-2.83-2.83l7.42-7.42" />
         </svg>
       </button>
-      <input aria-label="Ask SoloBuildAI anything" placeholder="Ask SoloBuildAI anything..." disabled={disabled} />
+      <input aria-label="Ask Rollo AI anything" placeholder="Ask Rollo AI anything..." disabled={disabled} />
       <button type="button" aria-label="AI suggestions" className="chatbot-composer__optional" disabled>
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />

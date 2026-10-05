@@ -16,7 +16,7 @@ export function ChatWindow({
       <div className="chatbot-window__messages">
         <div className="chatbot-window__message-list">
           {messages.map(message => <ChatMessage key={message.id} message={message} />)}
-          {loading && <div className="chatbot-window__loading" role="status">SoloBuildAI is thinking...</div>}
+          {loading && <div className="chatbot-window__loading" role="status">Rollo AI is thinking...</div>}
         </div>
       </div>
       <div className="chatbot-window__footer">

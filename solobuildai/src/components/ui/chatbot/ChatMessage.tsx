@@ -14,7 +14,7 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
     <div className="chatbot-message chatbot-message--assistant">
       <div className="chatbot-message__assistant-avatar">SB</div>
       <div className="chatbot-message__assistant-content">
-        <p className="chatbot-message__assistant-name">SoloBuildAI</p>
+        <p className="chatbot-message__assistant-name">Rollo AI</p>
         <p className="chatbot-message__assistant-text">{message.content}</p>
         {message.summary && (
           <div className="chatbot-message__summary">

@@ -632,12 +632,22 @@
 .chat-mode__tools-empty span { display: block; }
 
 .sidebar__section-label {
-  padding: 12px 10px 4px;
-  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px 6px;
+  color: var(--brand-primary);
   font-size: var(--font-size-2xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.sidebar__section-label::after {
+  height: 1px;
+  flex: 1;
+  background: rgb(0 102 255 / 0.28);
+  content: '';
 }
 
 .sidebar__empty-chats {
