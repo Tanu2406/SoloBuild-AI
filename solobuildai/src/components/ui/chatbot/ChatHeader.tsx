@@ -1,19 +1,10 @@
-<<<<<<< HEAD
-export function ChatHeader({ subtitle = 'Talent Acquisition' }: { subtitle?: string }) {
-=======
-export type AssistantStatus = 'idle' | 'typing' | 'loading' | 'thinking' | 'responding' | 'error';
+import { ArrowLeft } from 'lucide-react';
 
-const STATUS_LABELS: Record<AssistantStatus, string> = {
-  idle: 'Online',
-  typing: 'Typing...',
-  loading: 'Loading...',
-  thinking: 'Thinking...',
-  responding: 'Rollo AI is typing...',
-  error: 'Error',
-};
-
-export function ChatHeader({ status = 'idle' }: { status?: AssistantStatus }) {
->>>>>>> backend-integration-backup
+export function ChatHeader({
+  onExit,
+}: {
+  onExit: () => void;
+}) {
   return (
     <header className="chatbot-header">
       <div className="chatbot-header__identity">
@@ -24,15 +15,17 @@ export function ChatHeader({ status = 'idle' }: { status?: AssistantStatus }) {
         </div>
         <div className="chatbot-header__copy">
           <p className="chatbot-header__title">Rollo AI</p>
-<<<<<<< HEAD
-          <p className="chatbot-header__subtitle">{subtitle}</p>
-=======
           <p className="chatbot-header__subtitle">Talent Acquisition</p>
->>>>>>> backend-integration-backup
         </div>
       </div>
-      <div className="chatbot-header__status" data-status={status} title="Demo UI; no live business-system connection is active">
-        {STATUS_LABELS[status]}
+      <div className="chatbot-header__actions">
+        <span className="chatbot-header__status" title="Online">
+          Online
+        </span>
+        <button type="button" className="chatbot-header__exit" aria-label="Back to app" onClick={onExit}>
+          <ArrowLeft size={14} />
+          <span>Back to app</span>
+        </button>
       </div>
     </header>
   );
