@@ -81,6 +81,7 @@
   gap: 6px;
   color: #64748b;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .chatbot-header__status::before {
@@ -90,6 +91,9 @@
   background: #0066ff;
   content: '';
 }
+
+.chatbot-header__status[data-status='error'] { color: #dc2626; }
+.chatbot-header__status[data-status='error']::before { background: #dc2626; }
 
 .chatbot-window {
   display: flex;
@@ -195,7 +199,7 @@
 .chatbot-composer button svg { width: 16px; height: 16px; }
 .chatbot-composer button[type='submit'] svg { width: 16px; height: 16px; }
 .chatbot-composer button.chatbot-composer__optional { display: flex; }
-.chatbot-send-icon { width: 16px; height: 16px; }
+.chatbot-send-icon { width: 16px; height: 16px; transform: rotate(180deg); }
 
 .chatbot-message--user { display: flex; justify-content: flex-end; }
 

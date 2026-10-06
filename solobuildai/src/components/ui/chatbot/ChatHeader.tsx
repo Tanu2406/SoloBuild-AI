@@ -1,4 +1,19 @@
+<<<<<<< HEAD
 export function ChatHeader({ subtitle = 'Talent Acquisition' }: { subtitle?: string }) {
+=======
+export type AssistantStatus = 'idle' | 'typing' | 'loading' | 'thinking' | 'responding' | 'error';
+
+const STATUS_LABELS: Record<AssistantStatus, string> = {
+  idle: 'Online',
+  typing: 'Typing...',
+  loading: 'Loading...',
+  thinking: 'Thinking...',
+  responding: 'Rollo AI is typing...',
+  error: 'Error',
+};
+
+export function ChatHeader({ status = 'idle' }: { status?: AssistantStatus }) {
+>>>>>>> backend-integration-backup
   return (
     <header className="chatbot-header">
       <div className="chatbot-header__identity">
@@ -9,11 +24,15 @@ export function ChatHeader({ subtitle = 'Talent Acquisition' }: { subtitle?: str
         </div>
         <div className="chatbot-header__copy">
           <p className="chatbot-header__title">Rollo AI</p>
+<<<<<<< HEAD
           <p className="chatbot-header__subtitle">{subtitle}</p>
+=======
+          <p className="chatbot-header__subtitle">Talent Acquisition</p>
+>>>>>>> backend-integration-backup
         </div>
       </div>
-      <div className="chatbot-header__status" title="UI presentation only; this is not a live connection indicator">
-        Online
+      <div className="chatbot-header__status" data-status={status} title="Demo UI; no live business-system connection is active">
+        {STATUS_LABELS[status]}
       </div>
     </header>
   );

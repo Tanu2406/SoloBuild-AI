@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { GlobalSearch } from './GlobalSearch';
 import { ChatMode } from './ChatMode';
 import { useInterviews, useActivity } from '../../store/appStore';
+import { authService } from '../../services/authService';
 
 // ─── Scope filter chips shown left of search ───
 type ScopeChip = { id: string; label: string; path?: string };
@@ -227,7 +228,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <User size={14} /> Profile
                     </button>
                     <div className="app-topbar__menu-divider" />
-                    <button className="app-topbar__menu-item app-topbar__menu-item--danger" onClick={() => setProfileOpen(false)}>
+                    <button
+                      className="app-topbar__menu-item app-topbar__menu-item--danger"
+                      onClick={() => {
+                        authService.logout();
+                        setProfileOpen(false);
+                        navigate('/login', { replace: true });
+                      }}
+                    >
                       <LogOut size={14} /> Sign out
                     </button>
                   </div>
